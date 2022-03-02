@@ -115,6 +115,8 @@ class Transform {
     }
 
     this.matrix = Transform.mult(this.matrix, rotate)
+
+    return this;
   }
   
   frustum(right, top, near, far) {
@@ -135,6 +137,7 @@ class Transform {
 
     this.matrix = Transform.mult(this.matrix, frustum)
 
+    return this;
   }
 }
 
@@ -197,13 +200,17 @@ const sp = setup("square.vert", "square.frag");
 sp.then(main);
 
 function main() {
-  gl.clearColor(0, 0, 0, 1);
+
+  gl.clearColor(1, 1, 1, 1);
+  gl.enable(gl.DEPTH_TEST)
 
   const vertexPositionAttribute = gl.getAttribLocation(
     shaderProgram, "position");
   gl.enableVertexAttribArray(vertexPositionAttribute);
+
   const transformUniform = gl.getUniformLocation(
     shaderProgram, "transform");
+
   const colorUniform = gl.getUniformLocation(
     shaderProgram, "color");
 
@@ -213,29 +220,98 @@ function main() {
      0.5, -0.5, 0,
      0.5,  0.5, 0 ];
   const vertexBuffer = gl.createBuffer();
+  
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData),
     gl.STATIC_DRAW);
   gl.vertexAttribPointer(vertexPositionAttribute,
     3, gl.FLOAT, false, 12, 0);
 
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  const transformData = [
-    0.75, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1 ];
+    // clears background
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   let tr = new Transform();
   
   tr.frustum(1, 0.75, 5, 15);
-  tr.translate(0,0, -10);
-  tr.rotate(60, 'Z')
-  tr.rotate(45, 'Y')
-  gl.uniformMatrix4fv(transformUniform, false,
-    new Float32Array(tr.matrix));
+  tr.translate(0,0, -10).rotate(15, 'X').rotate(30, 'Y');
+  // tr.rotate(0, 'X')
+  gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+
+
+  function drawSquare(color) {
+
+    // Push copy of transform.
+    tr.push()
+    
+    // Send transform matrix data to vertex shader.
+    gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+
+    // Send RGB values for black to fragment shader.
+    gl.uniform3f(colorUniform, 0.0, 0.0, 0.0)
+
+    // Draw square.
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+
+    // Translate forward a little bit, scale a little bit smaller.
+    tr.translate(0, 0, 0.001).scale(0.9, 0.9, 1)
+
+    // Send transform matrix data to vertex shader.
+    gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+    
+    // Send RGB values for color (i.e., color[0], color[1], color[2])
+    // to fragment shader.
+    gl.uniform3f(colorUniform, color.r, color.g, color.b)
+    
+    // Draw square again.
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+    
+    // Restore transform (via pop) to what it was when this function
+    // was called.
+    tr.pop()
+  }
+
+  // drawSquare({r: 1.0, g: 0.6, b: 0.0})
+
+  /**
+   * Draws a cube of a specified color
+   * @param {Object} color - An object with properties r, g, and b from 0 to 1
+   */
+  function drawCube(color) {
+    // faces are drawn in the order of:
+    // Front, Right, Top, Left, Bottom, Back
+
+    // various translations to get the cube faces into the right position
+    const translations = [
+      [0.0, 0.0, 0.5],
+      [0.5, 0.0, 0.0],
+      [0.0, 0.5, 0.0],
+      [-0.5, 0.0, 0.0],
+      [0.0, -0.5, 0.0],
+      [0.0, 0.0, -0.5]
+    ]
+    
+    // various rotations to get the cube faces facing the right directions
+    const rotations = [
+      [0, 'Y'],
+      [-90, 'Y'],
+      [-90, 'X'],
+      [90, 'Y'],
+      [90, 'X'],
+      [180, 'Y'],
+    ]
+    for (let i = 0; i < translations.length; i++) {
+
+      tr.push()
+      tr.translate(...translations[i]).rotate(...rotations[i])
+      drawSquare(color)
+      tr.pop()
+
+    }
+  }
+
+  drawCube({r: 1.0, g: 0.6, b: 0.0})
   
-  gl.uniform3f(colorUniform, 1, 0.6, 0);
-  gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+
+  // gl.uniform3f(colorUniform, 1, 0.6, 0);
+  // gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
 }

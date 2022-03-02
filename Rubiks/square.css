@@ -4,3 +4,7 @@
   margin: auto;
   margin-top: 40px;
 }
+
+body {
+  background-color: gray;
+}
