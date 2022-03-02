@@ -27,7 +27,7 @@ class Transform {
     // Pop transformation matrix from stack, overwrite
     // current transformation matrix with the one that
     // was popped.
-    this.history.pop(this.matrix)
+    this.matrix = this.history.pop()
   }
 
   // Multiplies two 4x4 matrices together
@@ -55,7 +55,7 @@ class Transform {
       0, 0, 0, 1,
     ]
 
-    this.matrix = Transform.mult(translate, this.matrix)
+    this.matrix = Transform.mult(this.matrix, translate)
 
     return this;
   }
@@ -71,7 +71,7 @@ class Transform {
        0,  0,  0, 1,
     ]
 
-    this.matrix = mult(scale, this.matrix)
+    this.matrix = Transform.mult(this.matrix, scale)
 
     return this;
   }
@@ -81,6 +81,40 @@ class Transform {
     // representing coordinate axis rotation (axis argument
     // should be "X", "Y" or "Z") by given angle (in degrees).
     // (Overwrite current transformation matrix with the result.)
+
+    let rad = angle * Math.PI / 180
+    let rotate = []
+
+    switch(axis) {
+      case "X":
+        rotate = [
+          1, 0,             0,                    0,
+          0, Math.cos(rad), Math.sin(rad) * (-1), 0,
+          0, Math.sin(rad), Math.cos(rad),        0,
+          0, 0,             0,                    1
+        ]
+
+      break;
+      case "Y":
+        rotate = [
+          Math.cos(rad), 0, Math.sin(rad) * (-1), 0,
+          0,             1, 0,                    0,
+          Math.sin(rad), 0, Math.cos(rad),        0,
+          0,             0, 0,                    1
+        ]
+      break;
+
+      case "Z":
+        rotate = [
+          Math.cos(rad), Math.sin(rad) * (-1), 0, 0,
+          Math.sin(rad), Math.cos(rad),        0, 0,
+          0,             0,                    1, 0,
+          0,             0,                    0, 1,
+        ]
+      break;
+    }
+
+    this.matrix = Transform.mult(this.matrix, rotate)
   }
   
   frustum(right, top, near, far) {
@@ -88,6 +122,19 @@ class Transform {
     // representing perspective normalization transformation using
     // parameters right, top, near and far.  (Overwrite current
     // transformation matrix with the result.)
+
+    const a = (near + far)/(near - far)
+    const B = (2 * near * far)/(near - far)
+
+    let frustum = [
+      (near / right), 0,            0, 0,
+      0,              (near / top), 0, 0,
+      0,              0,            a, B,
+      0,              0,           -1, 0,
+    ]
+
+    this.matrix = Transform.mult(this.matrix, frustum)
+
   }
 }
 
@@ -181,9 +228,11 @@ function main() {
     0, 0, 0, 1 ];
 
   let tr = new Transform();
-  tr.scale(0.75, 1, 1).translate(0,0,0)
-  console.log(tr.matrix);
-
+  
+  tr.frustum(1, 0.75, 5, 15);
+  tr.translate(0,0, -10);
+  tr.rotate(60, 'Z')
+  tr.rotate(45, 'Y')
   gl.uniformMatrix4fv(transformUniform, false,
     new Float32Array(tr.matrix));
   
