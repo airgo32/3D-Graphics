@@ -1,0 +1,85 @@
+Putting some old code here that isn't currently being used, in case I need to reference it later.
+
+
+  function drawSquare(color) {
+
+    // Push copy of transform.
+    tr.push()
+    
+    // Send transform matrix data to vertex shader.
+    gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+
+    // Send RGB values for black to fragment shader.
+    gl.uniform3f(colorUniform, 0.0, 0.0, 0.0)
+
+    // Draw square.
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+
+    // Translate forward a little bit, scale a little bit smaller.
+    tr.translate(0, 0, 0.001).scale(0.9, 0.9, 1)
+
+    // Send transform matrix data to vertex shader.
+    gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+    
+    // Send RGB values for color (i.e., color[0], color[1], color[2])
+    // to fragment shader.
+    gl.uniform3f(colorUniform, color[0], color[1], color[2])
+    
+    // Draw square again.
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+    
+    // Restore transform (via pop) to what it was when this function
+    // was called.
+    tr.pop()
+  }
+
+  // drawSquare({r: 1.0, g: 0.6, b: 0.0})
+
+
+
+  /**
+   * Draws a cube of a specified color
+   * @param {Object} color - An object with properties r, g, and b from 0 to 1
+   */
+  function drawCube(color) {
+    // faces are drawn in the order of:
+    // Front, Right, Top, Left, Bottom, Back
+
+    // various translations to get the cube faces into the right position
+    const translations = [
+      [0.0, 0.0, 0.5],
+      [0.5, 0.0, 0.0],
+      [0.0, 0.5, 0.0],
+      [-0.5, 0.0, 0.0],
+      [0.0, -0.5, 0.0],
+      [0.0, 0.0, -0.5]
+    ]
+    
+    // various rotations to get the cube faces facing the right directions
+    const rotations = [
+      [0, 'Y'],
+      [-90, 'Y'],
+      [-90, 'X'],
+      [90, 'Y'],
+      [90, 'X'],
+      [180, 'Y'],
+    ]
+
+    // colors for each face
+    const colorData = [
+      [1.0, 0.0, 0.0], // Red
+      [0.0, 0.0, 1.0], // Blue
+      [1.0, 1.0, 1.0], // White
+      [0.0, 1.0, 0.0], // Green
+      [1.0, 1.0, 0.0], // Yellow
+      [1.0, 0.6, 0.0], // Orange
+    ]
+    for (let i = 0; i < translations.length; i++) {
+
+      tr.push()
+      tr.translate(...translations[i]).rotate(...rotations[i])
+      drawSquare(colorData[i])
+      tr.pop()
+
+    }
+  }

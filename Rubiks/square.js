@@ -234,83 +234,166 @@ function main() {
   
   tr.frustum(1, 0.75, 5, 15);
   tr.translate(0,0, -10).rotate(15, 'X').rotate(30, 'Y');
-  // tr.rotate(0, 'X')
+  tr.scale(0.3, 0.3, 0.3)
+  // tr.rotate(10, 'X')
   gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
 
+  class SubCube {
 
-  function drawSquare(color) {
-
-    // Push copy of transform.
-    tr.push()
+    constructor(x, y, z) {
+      this.x = x;  // x = -1, 0, or 1; this is the initial x
+                   // position relative to the overall cube.
+      this.y = y;
+      this.z = z;
+      this.rot = new Transform();  // This is a transform to track
+                                   // how this subcube is rotated
+                                   // as the overall cube is
+                                   // scrambled.
+    }
     
-    // Send transform matrix data to vertex shader.
-    gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
-
-    // Send RGB values for black to fragment shader.
-    gl.uniform3f(colorUniform, 0.0, 0.0, 0.0)
-
-    // Draw square.
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-
-    // Translate forward a little bit, scale a little bit smaller.
-    tr.translate(0, 0, 0.001).scale(0.9, 0.9, 1)
-
-    // Send transform matrix data to vertex shader.
-    gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
-    
-    // Send RGB values for color (i.e., color[0], color[1], color[2])
-    // to fragment shader.
-    gl.uniform3f(colorUniform, color.r, color.g, color.b)
-    
-    // Draw square again.
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-    
-    // Restore transform (via pop) to what it was when this function
-    // was called.
-    tr.pop()
-  }
-
-  // drawSquare({r: 1.0, g: 0.6, b: 0.0})
-
-  /**
-   * Draws a cube of a specified color
-   * @param {Object} color - An object with properties r, g, and b from 0 to 1
-   */
-  function drawCube(color) {
-    // faces are drawn in the order of:
-    // Front, Right, Top, Left, Bottom, Back
-
-    // various translations to get the cube faces into the right position
-    const translations = [
-      [0.0, 0.0, 0.5],
-      [0.5, 0.0, 0.0],
-      [0.0, 0.5, 0.0],
-      [-0.5, 0.0, 0.0],
-      [0.0, -0.5, 0.0],
-      [0.0, 0.0, -0.5]
-    ]
-    
-    // various rotations to get the cube faces facing the right directions
-    const rotations = [
-      [0, 'Y'],
-      [-90, 'Y'],
-      [-90, 'X'],
-      [90, 'Y'],
-      [90, 'X'],
-      [180, 'Y'],
-    ]
-    for (let i = 0; i < translations.length; i++) {
-
+    drawSquare(color, outside=true) {
+      // Save (via push) a copy of the overall transform.
       tr.push()
-      tr.translate(...translations[i]).rotate(...rotations[i])
-      drawSquare(color)
+  
+      gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+      gl.uniform3f(colorUniform, 0.0, 0.0, 0.0)
+      gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+      
+      if (outside) {
+        tr.translate(0, 0, 0.001).scale(0.9, 0.9, 1)
+        gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
+        gl.uniform3f(colorUniform, color[0], color[1], color[2])
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+      }
+      // Restore (via pop) overall transform.
       tr.pop()
-
+    }
+    
+    draw() {
+      // faces are drawn in the order of:
+      // Front, Right, Top, Left, Bottom, Back
+  
+      // various translations to get the cube faces into the right position
+      const translations = [
+        [0.0, 0.0, 0.5],
+        [0.5, 0.0, 0.0],
+        [0.0, 0.5, 0.0],
+        [-0.5, 0.0, 0.0],
+        [0.0, -0.5, 0.0],
+        [0.0, 0.0, -0.5]
+      ]
+      
+      // various rotations to get the cube faces facing the right directions
+      const rotations = [
+        [0, 'Y'],
+        [-90, 'Y'],
+        [-90, 'X'],
+        [90, 'Y'],
+        [90, 'X'],
+        [180, 'Y'],
+      ]
+  
+      // colors for each face
+      const colorData = [
+        [1.0, 0.0, 0.0], // Red
+        [0.0, 0.1, 1.0], // Blue
+        [1.0, 1.0, 1.0], // White
+        [0.0, 0.8, 0.0], // Green
+        [1.0, 1.0, 0.0], // Yellow
+        [1.0, 0.6, 0.0], // Orange
+      ]
+  
+      // booleans to track if a subcube face is an 'outside' face
+      const outsides = [
+        this.z == 1,
+        this.x == 1,
+        this.y == 1,
+        this.x == -1,
+        this.y == -1,
+        this.z == -1
+      ]
+  
+      // Save (via push) copy of overall transform.
+      tr.push()
+      
+      // Multiply overall transform by the transform used to track
+      // this subcube's rotations relative to the overall cube.
+      tr.matrix = Transform.mult(tr.matrix, this.rot.matrix)
+      
+      // Translate overall transform based on this subcube's
+      // x, y, and z values ... so that it's pushed out from the
+      // center of the overall cube.
+      tr.translate(this.x, this.y, this.z)
+      
+      // Use drawSquare method to draw the six faces of the cube.
+      // Each face should have a different color.  The second
+      // argument to drawSquare (to determine whether the face is
+      // colored or left black) should be set based on this
+      // subcube's x, y and z values.
+      for (let i = 0; i < translations.length; i++ ) {
+        tr.push()
+        tr.translate(...translations[i]).rotate(...rotations[i])
+        this.drawSquare(colorData[i], outsides[i])
+        tr.pop()
+      }
+      // Restore (via pop) overall transform.  
+      tr.pop()
     }
   }
 
-  drawCube({r: 1.0, g: 0.6, b: 0.0})
+  let frameCount = 0;
+
+  let subCubes = [];
+
+  for (let i = -1; i < 2; i++) {
+    for (let j = -1; j < 2; j++) {
+      for (let k = -1; k < 2; k++) {
+
+        if (!(i == 0 && j == 0 && k == 0)) {
+          let cube = new SubCube(i, j, k)
+          // console.log(cube.x, cube.y, cube.z)
+          subCubes.push(cube)
+        }
+      }
+    }
+  }
+
+  // let testCube = new SubCube(1, 1, 1)
+
+  function animate() {
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    let factor = (Math.sin(frameCount * Math.PI / 90) + 1.3) * 2
+    let bounce = Math.cos(frameCount * Math.PI / 180) * 0.002
+
+    tr.translate(0, bounce, 0)
+
+    // rotate subcubes
+    for (let i = 0; i < subCubes.length; i++) {
+      if (subCubes[i].x == 1) {
+        subCubes[i].rot.rotate(.75, 'X')
+      }
+    }
+
+
+    for (let i = 0; i < subCubes.length; i++) {
+      subCubes[i].draw()
+    }
+
+    frameCount++
+    frameCount %= 360
+    requestAnimationFrame(animate);
+
+  }
+  requestAnimationFrame(animate);
+
+  // drawCube({r: 1.0, g: 0.6, b: 0.0})
+
+  // tr.translate(2, 0, 0)
   
+  // drawCube({r: 1.0, g: 0.0, b: 0.0})
+
 
   // gl.uniform3f(colorUniform, 1, 0.6, 0);
   // gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
