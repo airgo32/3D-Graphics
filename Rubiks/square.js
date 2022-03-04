@@ -79,14 +79,15 @@ class Transform {
   rotate(angle, axis) {
     // Multiply current transformation matrix by matrix
     // representing coordinate axis rotation (axis argument
-    // should be "X", "Y" or "Z") by given angle (in degrees).
+    // should be "x", "y" or "z") by given angle (in degrees).
     // (Overwrite current transformation matrix with the result.)
 
     let rad = angle * Math.PI / 180
     let rotate = []
 
     switch(axis) {
-      case "X":
+      case "x":
+        // console.log("x")
         rotate = [
           1, 0,             0,                    0,
           0, Math.cos(rad), Math.sin(rad) * (-1), 0,
@@ -95,7 +96,9 @@ class Transform {
         ]
 
       break;
-      case "Y":
+      case "y":
+        // console.log("y")
+
         rotate = [
           Math.cos(rad), 0, Math.sin(rad) * (-1), 0,
           0,             1, 0,                    0,
@@ -104,7 +107,7 @@ class Transform {
         ]
       break;
 
-      case "Z":
+      case "z":
         rotate = [
           Math.cos(rad), Math.sin(rad) * (-1), 0, 0,
           Math.sin(rad), Math.cos(rad),        0, 0,
@@ -117,6 +120,52 @@ class Transform {
     this.matrix = Transform.mult(this.matrix, rotate)
 
     return this;
+  }
+
+  preRotate(angle, axis) {
+    // boy oh boy this sure does something
+    // I don't entirely understand why this will work (or won't work), but here we go
+
+    let rad = angle * Math.PI / 180
+    let rotate = []
+
+    switch(axis) {
+      case "x":
+        // console.log("x")
+        rotate = [
+          1, 0,             0,                    0,
+          0, Math.cos(rad), Math.sin(rad) * (-1), 0,
+          0, Math.sin(rad), Math.cos(rad),        0,
+          0, 0,             0,                    1
+        ]
+
+      break;
+      case "y":
+        // console.log("y")
+
+        rotate = [
+          Math.cos(rad), 0, Math.sin(rad) * (-1), 0,
+          0,             1, 0,                    0,
+          Math.sin(rad), 0, Math.cos(rad),        0,
+          0,             0, 0,                    1
+        ]
+      break;
+
+      case "z":
+        rotate = [
+          Math.cos(rad), Math.sin(rad) * (-1), 0, 0,
+          Math.sin(rad), Math.cos(rad),        0, 0,
+          0,             0,                    1, 0,
+          0,             0,                    0, 1,
+        ]
+      break;
+    }
+
+    this.matrix = Transform.mult(rotate, this.matrix)
+
+    return this;
+
+
   }
   
   frustum(right, top, near, far) {
@@ -233,9 +282,9 @@ function main() {
   let tr = new Transform();
   
   tr.frustum(1, 0.75, 5, 15);
-  tr.translate(0,0, -10).rotate(15, 'X').rotate(30, 'Y');
+  tr.translate(0,0, -10).rotate(15, 'x').rotate(30, 'y');
   tr.scale(0.3, 0.3, 0.3)
-  // tr.rotate(10, 'X')
+  // tr.rotate(10, 'x')
   gl.uniformMatrix4fv(transformUniform, false, new Float32Array(tr.matrix));
 
   class SubCube {
@@ -245,6 +294,10 @@ function main() {
                    // position relative to the overall cube.
       this.y = y;
       this.z = z;
+
+      this.x0 = x;
+      this.y0 = y;
+      this.z0 = z;
       this.rot = new Transform();  // This is a transform to track
                                    // how this subcube is rotated
                                    // as the overall cube is
@@ -285,12 +338,12 @@ function main() {
       
       // various rotations to get the cube faces facing the right directions
       const rotations = [
-        [0, 'Y'],
-        [-90, 'Y'],
-        [-90, 'X'],
-        [90, 'Y'],
-        [90, 'X'],
-        [180, 'Y'],
+        [0, 'y'],
+        [-90, 'y'],
+        [-90, 'x'],
+        [90, 'y'],
+        [90, 'x'],
+        [180, 'x'],
       ]
   
       // colors for each face
@@ -305,12 +358,12 @@ function main() {
   
       // booleans to track if a subcube face is an 'outside' face
       const outsides = [
-        this.z == 1,
-        this.x == 1,
-        this.y == 1,
-        this.x == -1,
-        this.y == -1,
-        this.z == -1
+        this.z0 == 1,
+        this.x0 == 1,
+        this.y0 == 1,
+        this.x0 == -1,
+        this.y0 == -1,
+        this.z0 == -1
       ]
   
       // Save (via push) copy of overall transform.
@@ -323,7 +376,7 @@ function main() {
       // Translate overall transform based on this subcube's
       // x, y, and z values ... so that it's pushed out from the
       // center of the overall cube.
-      tr.translate(this.x, this.y, this.z)
+      tr.translate(this.x0, this.y0, this.z0)
       
       // Use drawSquare method to draw the six faces of the cube.
       // Each face should have a different color.  The second
@@ -339,9 +392,73 @@ function main() {
       // Restore (via pop) overall transform.  
       tr.pop()
     }
+
+    rotateSubcube(axis, direction) {
+      // const distance = direction * 90
+
+      const v = [this.x, this.y, this.z, 1]
+      let t = []
+
+      switch (axis) {
+        case 'x':
+          t = [
+            1, 0, 0, 0,
+            0, 0, direction * (1), 0,
+            0, direction * (-1), 0, 0,
+            0, 0, 0, 1,
+          ]
+        break;
+
+        case 'y':
+          t = [
+            0, 0, direction * (1), 0,
+            0, 1, 0, 0,
+            direction * (-1), 0, 0, 0,
+            0, 0, 0, 1,
+          ]
+        break;
+
+        case 'z':
+          t = [
+            0, direction * (1), 0, 0,
+            direction * (-1), 0, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+          ]
+        break;
+      }
+
+      // code copied from my geometric transforms assignment
+      this.x = v[0] * t[0] + v[1] * t[4] + v[2] * t[8] + v[3] * t[12];
+      this.y = v[0] * t[1] + v[1] * t[5] + v[2] * t[9] + v[3] * t[13];
+      this.z = v[0] * t[2] + v[1] * t[6] + v[2] * t[10] + v[3] * t[14];
+    }
   }
 
   let frameCount = 0;
+
+  let rotations = [
+    // denoted by axis, level (position in overall cube), and direction
+    ['x', -1, -1],
+    ['x', -1, 1],
+    ['x', 0, -1],
+    ['x', 0, 1],
+    ['x', 1, -1],
+    ['x', 1, 1],
+    ['y', -1, -1],
+    ['y', -1, 1],
+    ['y', 0, -1],
+    ['y', 0, 1],
+    ['y', 1, -1],
+    ['y', 1, 1],
+    ['z', -1, -1],
+    ['z', -1, 1],
+    ['z', 0, -1],
+    ['z', 0, 1],
+    ['z', 1, -1],
+    ['z', 1, 1],
+    
+  ]
 
   let subCubes = [];
 
@@ -351,7 +468,6 @@ function main() {
 
         if (!(i == 0 && j == 0 && k == 0)) {
           let cube = new SubCube(i, j, k)
-          // console.log(cube.x, cube.y, cube.z)
           subCubes.push(cube)
         }
       }
@@ -359,20 +475,34 @@ function main() {
   }
 
   // let testCube = new SubCube(1, 1, 1)
+  // let turn = Math.floor(Math.random() * 18)
+  let turn = Math.floor(Math.random() * 18)
 
   function animate() {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    let factor = (Math.sin(frameCount * Math.PI / 90) + 1.3) * 2
-    let bounce = Math.cos(frameCount * Math.PI / 180) * 0.002
+    // speed MUST be a factor of 90
+    const speed = 2;
 
-    tr.translate(0, bounce, 0)
+    let factor = (-Math.cos(frameCount * speed * Math.PI / (45))+1) * speed
+    let bounce = Math.cos(frameCount * Math.PI / 180) * 0.003
+
+
+    tr.rotate(.1, 'x').rotate(.2, 'y').rotate(.1, 'z')
+    // tr.translate(0, bounce, 0)
 
     // rotate subcubes
     for (let i = 0; i < subCubes.length; i++) {
-      if (subCubes[i].x == 1) {
-        subCubes[i].rot.rotate(.75, 'X')
+
+      // if (subCubes[i].x == 1) {
+      //   subCubes[i].rot.rotate(1, 'x')
+      // }
+
+      // console.log(subCubes[i][rotations[turn][0]] == rotations[turn][1])
+
+      if (subCubes[i][rotations[turn][0]] == rotations[turn][1]) {
+        subCubes[i].rot.preRotate(rotations[turn][2] * factor, rotations[turn][0])
       }
     }
 
@@ -382,7 +512,21 @@ function main() {
     }
 
     frameCount++
-    frameCount %= 360
+    if (frameCount % (90 / speed) == 0) {
+      for (let i = 0; i < subCubes.length; i++) {
+        if (subCubes[i][rotations[turn][0]] == rotations[turn][1]) {
+          subCubes[i].rotateSubcube(rotations[turn][0], rotations[turn][2])
+
+        }
+      }
+      // generate a new semi-random rotation (avoids repeating and undoing)
+      // let oldTurn = turn;
+      // while(oldTurn == turn || (oldTurn-rotations[turn][2])%18 == turn) {
+          turn = Math.floor(Math.random() * 18)
+      //   console.log("rerolling!")
+      // }
+      // console.log("-----")
+    }
     requestAnimationFrame(animate);
 
   }
@@ -398,3 +542,7 @@ function main() {
   // gl.uniform3f(colorUniform, 1, 0.6, 0);
   // gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
 }
+
+
+
+
