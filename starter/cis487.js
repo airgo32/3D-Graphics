@@ -131,10 +131,16 @@ export class Transform {
   transformVector(v) {
     let result = []
 
-    result[0] = v[0] * this.matrix[0] + v[1] * this.matrix[4] + v[2] * this.matrix[8] + v[3] * this.matrix[12];
-    result[1] = v[0] * this.matrix[1] + v[1] * this.matrix[5] + v[2] * this.matrix[9] + v[3] * this.matrix[13];
-    result[2] = v[0] * this.matrix[2] + v[1] * this.matrix[6] + v[2] * this.matrix[10] + v[3] * this.matrix[14];
-    result[3] = v[0] * this.matrix[3] + v[1] * this.matrix[7] + v[2] * this.matrix[11] + v[3] * this.matrix[15];
+    result[0] = v[0] * this.matrix[0] + v[1] * this.matrix[1] + v[2] * this.matrix[2] + v[3] * this.matrix[3];
+    result[1] = v[0] * this.matrix[4] + v[1] * this.matrix[5] + v[2] * this.matrix[6] + v[3] * this.matrix[7];
+    result[2] = v[0] * this.matrix[8] + v[1] * this.matrix[9] + v[2] * this.matrix[10] + v[3] * this.matrix[11];
+    result[3] = v[0] * this.matrix[12] + v[1] * this.matrix[13] + v[2] * this.matrix[14] + v[3] * this.matrix[15];
+
+    // get back to homogeneous coordinates
+    result[0] /= result[3]
+    result[1] /= result[3]
+    result[2] /= result[3]
+    result[3] = 1
 
     return result
   }

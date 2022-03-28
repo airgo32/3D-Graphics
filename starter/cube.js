@@ -114,6 +114,7 @@ function main() {
   overallTransform = new Transform();
   overallTransform.frustum(1, 0.75, 5, 35);
   overallTransform.translate(0, 0, -20);
+  // overallTransform.translate(0,0,0)
   overallTransform.rotate(20, "X").rotate(-30, "Y");
 
   const subCubes = [ [ [],[],[] ],
@@ -130,85 +131,140 @@ function main() {
   }
 
   function mousedownHandler(event) {
-    // console.log(`down: ${event.pageX - cv.offsetLeft}, ${event.pageY - cv.offsetTop}`);
     clicking = true
     mouseDownPoint.X = event.pageX - cv.offsetLeft
     mouseDownPoint.Y = event.pageY - cv.offsetTop
-    console.log("X: " + mouseDownPoint.X + "\nY: " + mouseDownPoint.Y)
-  
-    // console.log(mouseDownPoint)
   }
   
   function mouseupHandler(event) {
-    // console.log(`up: ${event.pageX - cv.offsetLeft}, ${event.pageY - cv.offsetTop}`);
-    if (clicking) {
-      console.log("X distance: " + (event.pageX - cv.offsetLeft - mouseDownPoint.X)
-       + "\nY distance: " + (event.pageY - cv.offsetTop - mouseDownPoint.Y))
-      clicking = false
 
+    const mouseUpPoint = {
+      X: event.pageX,
+      Y: event.pageY,
+    }
+    
+    if (clicking) {
+      clicking = false
 
       let inverseTransform = Transform.invert(overallTransform)
 
-      const cvvCoord = getCVVCoords(event)
+      const upCoord = getCVVCoords(mouseUpPoint)
 
-      let negZCoord = [cvvCoord.X, cvvCoord.Y, -1, 0]
-      let posZCoord = [cvvCoord.X, cvvCoord.Y, 1, 0]
+      let upNegZCoord = [upCoord.X, upCoord.Y, -1, 1]
+      let upPosZCoord = [upCoord.X, upCoord.Y, 1, 1]
+      let upNegZTransformed = inverseTransform.transformVector(upNegZCoord)
+      let upPosZTransformed = inverseTransform.transformVector(upPosZCoord)
 
-      let negZTransformed = inverseTransform.transformVector(negZCoord)
-      let posZTransformed = inverseTransform.transformVector(posZCoord)
-
-      // console.log(negZTransformed)
-      // console.log(posZTransformed)
-      let xEquation = {
-        intercept: negZTransformed[0],
-        slope: posZTransformed[0] - negZTransformed[0]
-      }
-      let yEquation = {
-        intercept: negZTransformed[1],
-        slope: posZTransformed[1] - negZTransformed[1]
-      }
-      let zEquation = {
-        intercept: negZTransformed[2],
-        slope: posZTransformed[2] - negZTransformed[2]
-      }
-
-      let plane = determinePlane(xEquation, yEquation, zEquation)
-      
-
-
+      let upPlane = determinePlane(upNegZTransformed, upPosZTransformed)
+      getPlaneCoords(upPlane, upPosZTransformed, upNegZTransformed)
   
       // new rotation
-      const axes = ["X", "Y", "Z"]
-      let randomAxis = Math.floor(Math.random() * 3)
-      let randomGroup = 1 - Math.floor(Math.random() * 3)
-      let randomCcw = Math.floor(Math.random() * 2)
-      rotateGroup(axes[randomAxis], randomGroup, randomCcw == 1 ? true : false)
+      rotateGroup(upPlane, 1, true)
+
     }
-    
   }
   
   cv.addEventListener("mousedown", mousedownHandler);
   window.addEventListener("mouseup", mouseupHandler);
 
-  function getCVVCoords(event) {
+  function getCVVCoords(rawCoords) {
 
     let coords = {
-      X: ((event.pageX - cv.offsetLeft) / cv.width) * 2 - 1,
-      Y: ((event.pageY - cv.offsetTop) / cv.height) * -2 + 1
+      X: ((rawCoords.X - cv.offsetLeft) / cv.width) * 2 - 1,
+      Y: ((rawCoords.Y - cv.offsetTop) / cv.height) * -2 + 1
     }
 
     return coords
   }
 
-  function determinePlane(x, y, z) {
+  function determinePlane(posCoord, negCoord) {
+
+    let t, posX, posY, posZ
+
+    const xEqu = {
+      intercept: negCoord[0],
+      change: posCoord[0] - negCoord[0]
+    }
+    const yEqu = {
+      intercept: negCoord[1],
+      change: posCoord[1] - negCoord[1]
+    }
+    const zEqu = {
+      intercept: negCoord[2],
+      change: posCoord[2] - negCoord[2]
+    }
 
     // start with x
-    let t = (1.5 - x.intercept) / x.slope
+    t = (1.5 - xEqu.intercept) / xEqu.change
 
-    let posY = y.slope * t + y.intercept
-    let posZ = z.slope * t + z.intercept
+    posY = yEqu.change * t + yEqu.intercept
+    posZ = zEqu.change * t + zEqu.intercept
 
-    if (Math.abs(posY < 1.5) && Math.abs(posZ < 1.5)) return 'X'
+    if (Math.abs(posY) < 1.5 && Math.abs(posZ) < 1.5) return 'X'
+
+    // then y
+
+    t = (1.5 - yEqu.intercept) / yEqu.change
+
+    posX = xEqu.change * t + xEqu.intercept
+    posZ = zEqu.change * t + zEqu.intercept
+
+    if (Math.abs(posX) < 1.5 && Math.abs(posZ) < 1.5) return 'Y'
+
+    // then z
+
+    t = (1.5 - zEqu.intercept) / zEqu.change
+
+    posX = xEqu.change * t + xEqu.intercept
+    posY = yEqu.change * t + yEqu.intercept
+
+    if (Math.abs(posX) < 1.5 && Math.abs(posY) < 1.5) return 'Z'
+
+    // If we don't hit the cube, return false
+    return false;
+  }
+
+  function getPlaneCoords(plane, posCoord, negCoord) {
+
+    let t, xCoord, yCoord, zCoord
+
+    const xEqu = {
+      intercept: negCoord[0],
+      change: posCoord[0] - negCoord[0]
+    }
+    const yEqu = {
+      intercept: negCoord[1],
+      change: posCoord[1] - negCoord[1]
+    }
+    const zEqu = {
+      intercept: negCoord[2],
+      change: posCoord[2] - negCoord[2]
+    }
+
+    switch (plane) {
+      case "X":
+        t = (1.5 - xEqu.intercept) / xEqu.change
+        yCoord = yEqu.change * t + yEqu.intercept
+        zCoord = zEqu.change * t + zEqu.intercept
+      break;
+
+      case "Y":
+        t = (1.5 - yEqu.intercept) / yEqu.change
+        xCoord = xEqu.change * t + xEqu.intercept
+        zCoord = zEqu.change * t + zEqu.intercept
+      break;
+
+      case "Z":
+        t = (1.5 - zEqu.intercept) / zEqu.change
+        xCoord = xEqu.change * t + xEqu.intercept
+        yCoord = yEqu.change * t + yEqu.intercept
+      break;
+    }
+
+    // if (xCoord) console.log("X: " + xCoord)
+    // if (yCoord) console.log("Y: " + yCoord)
+    // if (zCoord) console.log("Z: " + zCoord)
+    // console.log("---------------------")
   }
 
   function rotateGroup(axis, group, ccw) {
@@ -252,5 +308,5 @@ function main() {
     animate();
   }
 
-  rotateGroup("Y", -1, true);
+  // rotateGroup("Y", -1, true);
 }
