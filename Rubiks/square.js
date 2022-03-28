@@ -483,10 +483,12 @@ function main() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // speed MUST be a factor of 90
-    const speed = 2;
+    const speed = 3;
 
     let factor = (-Math.cos(frameCount * speed * Math.PI / (45))+1) * speed
     let bounce = Math.cos(frameCount * Math.PI / 180) * 0.003
+
+    // factor = speed
 
 
     tr.rotate(.1, 'x').rotate(.2, 'y').rotate(.1, 'z')
