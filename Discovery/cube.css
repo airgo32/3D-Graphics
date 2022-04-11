@@ -1,0 +1,10 @@
+@charset "UTF-8";
+
+#content {
+  margin: auto;
+  margin-top: 40px;
+}
+
+canvas {
+  border: 1px solid rgb(220, 220, 220);
+}
