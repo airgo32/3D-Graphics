@@ -58,14 +58,29 @@ export function setup(vertexShaderFileName, fragmentShaderFileName) {
 export class Transform {
 
   constructor(matrix) {
-    if (matrix) this.matrix = matrix.slice(0);  // make a copy
-    else this.matrix = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
+    if (matrix) {
+      this.matrix = matrix.slice(0);  // make a copy
+      this.normalMatrix = matrix.slice(0)
+    } 
+
+    else {
+      this.matrix = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
+      this.normalMatrix = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
+
+    }
     
     this.history = [];
+    this.normalHistory = [];
   }
   
-  push() { this.history.push(this.matrix); }
-  pop() { this.matrix = this.history.pop(); }
+  push() { 
+    this.history.push(this.matrix);
+    this.normalHistory.push(this.normalHistory)
+  }
+  pop() {
+    this.matrix = this.history.pop();
+    this.normalMatrix = this.normalHistory.pop();
+  }
   
   static multiply(a, b) {
     let c = [0,0,0,0,  0,0,0,0,  0,0,0,0,  0,0,0,0];
@@ -109,8 +124,11 @@ export class Transform {
     
     if (pre) {
       this.matrix = Transform.multiply(m, this.matrix);
+      this.normalMatrix = Transform.multiply(m, this.normalMatrix);
     } else {
       this.matrix = Transform.multiply(this.matrix, m);
+      this.normalMatrix = Transform.multiply(this.normalMatrix, m);
+
     }
 
     return this;
@@ -125,6 +143,8 @@ export class Transform {
     let b = 2 * n * f / (n - f);
     this.matrix = Transform.multiply(this.matrix,
         [n/r,0,0,0,  0,n/t,0,0,  0,0,a,b,  0,0,-1,0]);
+
+  
     return this;
   }
 
@@ -232,5 +252,17 @@ export class Transform {
                           i10, i11, i12, i13,
                           i20, i21, i22, i23,
                           i30, i31, i32, i33]);
+  }
+
+  static transpose(matrix) {
+    let [m00, m01, m02, m03,
+      m10, m11, m12, m13,
+      m20, m21, m22, m23,
+      m30, m31, m32, m33] = matrix;
+
+    return [m00, m10, m20, m30,
+            m01, m11, m21, m31,
+            m02, m12, m22, m32,
+            m03, m13, m23, m33]
   }
 }

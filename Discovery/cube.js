@@ -8,7 +8,7 @@
  * - Arrow keys rotate the whole cube at once, around either the X or Y axis
  */
 import { gl, shaderProgram, setup, Transform } from "./cis487.js";
-let transformUniform, normalUniform, colorUniform, overallTransform;
+let transformUniform, normalMatrixUniform, colorUniform, overallTransform;
 
 // let mouseDownPoint = {X: 0, Y: 0}
 // let clicking = false
@@ -38,7 +38,7 @@ function main() {
     gl.enableVertexAttribArray(vertexPositionAttribute);
 
 
-  const normalVectorAttribute = gl.getAttribLocation(shaderProgram, "normal")
+  const normalVectorAttribute = gl.getAttribLocation(shaderProgram, "normalVector")
   gl.enableVertexAttribArray(normalVectorAttribute)
 
 
@@ -46,8 +46,8 @@ function main() {
     shaderProgram, "transform");
   colorUniform = gl.getUniformLocation(
     shaderProgram, "color");
-  normalUniform = gl.getUniformLocation(
-    shaderProgram, "normal")
+    normalMatrixUniform = gl.getUniformLocation(
+    shaderProgram, "normalMatrix")
 
   let vertexData = [ -0.5,  0.5, 0,
                      -0.5, -0.5, 0,
@@ -106,13 +106,10 @@ function main() {
 
       const inverseTransform = Transform.invert(overallTransform)
 
-
-
-
       overallTransform.translate(...translate)
       .rotate(...rotate)
       gl.uniformMatrix4fv(transformUniform, false, new Float32Array(overallTransform.matrix));
-      gl.uniformMatrix4fv(normalUniform, false, new Float32Array(inverseTransform.uniform) )
+      gl.uniformMatrix4fv(normalMatrixUniform, false, new Float32Array(inverseTransform.normalMatrix))
       gl.uniform3f(colorUniform, 0.0, 0.0, 0.0)
       gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
 
@@ -122,9 +119,20 @@ function main() {
     for (let i = 0; i < translations.length; i++) {
       drawSquare(translations[i], rotations[i])
     }
-    // drawSquare()
 
   }
 
-  drawCube()
+  overallTransform.rotate(180, "Y")
+
+  function animate() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // overallTransform.rotate(5, 'Y')
+
+    requestAnimationFrame(animate)
+    drawCube()
+
+  }
+
+  requestAnimationFrame(animate)
 }

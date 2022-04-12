@@ -1,5 +1,7 @@
-uniform lowp vec3 color;
+uniform highp vec3 color;
+
+varying highp vec3 vLighting;
 
 void main(void) {
-  gl_FragColor = vec4(color, 1.0);
+  gl_FragColor = vec4(vLighting, 1.0);
 }
