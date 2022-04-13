@@ -8,7 +8,7 @@
  * - Arrow keys rotate the whole cube at once, around either the X or Y axis
  */
 import { gl, shaderProgram, setup, Transform } from "./cis487.js";
-let transformUniform, normalMatrixUniform, colorUniform, overallTransform;
+let mvTransform, pTransform;
 
 // let mouseDownPoint = {X: 0, Y: 0}
 // let clicking = false
@@ -33,101 +33,122 @@ function main() {
   gl.clearColor(1, 1, 1, 1);
   gl.enable(gl.DEPTH_TEST);
 
-  const vertexPositionAttribute = gl.getAttribLocation(
-    shaderProgram, "position");
-    gl.enableVertexAttribArray(vertexPositionAttribute);
+  const uniforms = {
+    pTransform: gl.getUniformLocation(shaderProgram, "pTransform"),
+    mvTransform: gl.getUniformLocation(shaderProgram, "mvTransform"),
+    colorUniform: gl.getUniformLocation(shaderProgram, "color"),
+    normalMatrix: gl.getUniformLocation(shaderProgram, "normalMatrix"),
+  }
+  // transformUniform = gl.getUniformLocation(shaderProgram, "transform");
+  // colorUniform = gl.getUniformLocation(shaderProgram, "color");
+  // normalMatrix = gl.getUniformLocation(shaderProgram, "normalMatrix");
 
+  let vertexData = [ -0.5,  0.5, 0,     0, 0, 1, 
+                     -0.5, -0.5, 0,     0, 0, 1, 
+                      0.5, -0.5, 0,     0, 0, 1, 
+                      0.5,  0.5, 0,     0, 0, 1, ];
 
-  const normalVectorAttribute = gl.getAttribLocation(shaderProgram, "normalVector")
-  gl.enableVertexAttribArray(normalVectorAttribute)
-
-
-  transformUniform = gl.getUniformLocation(
-    shaderProgram, "transform");
-  colorUniform = gl.getUniformLocation(
-    shaderProgram, "color");
-    normalMatrixUniform = gl.getUniformLocation(
-    shaderProgram, "normalMatrix")
-
-  let vertexData = [ -0.5,  0.5, 0,
-                     -0.5, -0.5, 0,
-                      0.5, -0.5, 0,
-                      0.5,  0.5, 0 ];
-
-  const vertexNormal = [
-    0.0, 0.0, 1.0,
-
+  let normalData = [
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1
   ]
+
   let vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData),
-      gl.STATIC_DRAW);
-  gl.vertexAttribPointer(vertexPositionAttribute,
-      3, gl.FLOAT, false, 12, 0);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
 
-  const normalBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormal), gl.STATIC_DRAW)
-  gl.vertexAttribPointer(normalVectorAttribute, 3, gl.FLOAT, false, 0, 0)
+  const vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "position");
+  gl.enableVertexAttribArray(vertexPositionAttribute);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 24, 0);
 
-  overallTransform = new Transform();
-  overallTransform.frustum(1, 0.75, 5, 35);
-  overallTransform.translate(0, 0, -20);
-  overallTransform.scale(3, 3, 3)
-  overallTransform.rotate(25, "X").rotate(-45, "Y");
+  const normalAttribute = gl.getAttribLocation(shaderProgram, "normal");
+  gl.enableVertexAttribArray(normalAttribute);
+  // gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  gl.vertexAttribPointer(normalAttribute, 3, gl.FLOAT, false, 24, 12);
+
+  pTransform = new Transform();
+  pTransform.frustum(1, 0.75, 4, 24);
+  gl.uniformMatrix4fv(uniforms.pTransform, false, pTransform.matrix)
+
+  mvTransform = new Transform()
+  mvTransform.translate(0, 0, -14);
+  mvTransform.scale(3, 3, 3)
+  mvTransform.rotate(20, "X").rotate(-30, "Y");
 
 
-   
+
       
   function drawCube() {
 
-    const translations = [
-      [0.0, 0.0, 0.5], // Front
-      [0.0, 0.0, -0.5], // Back
-      [0.0, 0.5, 0.0], // Top
-      [0.0, -0.5, 0.0], // Down
-      [0.5, 0.0, 0.0], // Right
-      [-0.5, 0.0, 0.0], // Left
-      
-    ]
+    function drawSquare() {
+      mvTransform.push()
 
-    const rotations = [
-      [0, 'Y'], // Front
-      [180, 'X'], // Back
-      [-90, 'X'], // Top
-      [90, 'X'], // Down
-      [-90, 'Y'], // Right
-      [90, 'Y'], // Left
-    ]
+      mvTransform.translate(0, 0, 0.5)
 
+      let normalMatrix = Transform.invert(mvTransform.matrix)
+      normalMatrix = Transform.transpose(normalMatrix)
 
-    function drawSquare(translate, rotate) {
-      overallTransform.push()
+      // let normalMatrix = mvTransform.normalMatrix()
 
-      const inverseTransform = Transform.invert(overallTransform)
-
-      overallTransform.translate(...translate)
-      .rotate(...rotate)
-      gl.uniformMatrix4fv(transformUniform, false, new Float32Array(overallTransform.matrix));
-      gl.uniformMatrix4fv(normalMatrixUniform, false, new Float32Array(inverseTransform.normalMatrix))
-      gl.uniform3f(colorUniform, 0.0, 0.0, 0.0)
+      console.log()
+      gl.uniformMatrix4fv(uniforms.mvTransform, false, new Float32Array(mvTransform.matrix));
+      gl.uniformMatrix4fv(uniforms.normalMatrix, false, normalMatrix)
+      gl.uniform3f(uniforms.colorUniform, 0.0, 0.0, 0.0)
       gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
 
-      overallTransform.pop()
+      mvTransform.pop()
     }
 
-    for (let i = 0; i < translations.length; i++) {
-      drawSquare(translations[i], rotations[i])
-    }
+    mvTransform.push()
+    drawSquare()
+    mvTransform.rotate(90, "Y")
+    drawSquare()
+    mvTransform.rotate(90, "Y")
+    drawSquare()
+    mvTransform.rotate(90, "Y")
+    drawSquare()
+    mvTransform.rotate(90, "X")
+    drawSquare()
+    mvTransform.rotate(180, "X")
+    drawSquare()
+
+    mvTransform.pop()
+
+    mvTransform.push()
+    mvTransform.translate(0, 0, 0.5)
+
+    let normalMatrix = Transform.invert(mvTransform.matrix)
+    normalMatrix = Transform.transpose(normalMatrix)
+    console.log([
+      normalMatrix[0],
+      normalMatrix[1],
+      normalMatrix[2],
+
+      normalMatrix[4],
+      normalMatrix[5],
+      normalMatrix[6],
+
+      normalMatrix[10],
+      normalMatrix[11],
+      normalMatrix[12],
+
+    ])
+
+    console.log(mvTransform.normalMatrix())
+    mvTransform.pop()
+
 
   }
 
-  overallTransform.rotate(180, "Y")
+  mvTransform.rotate(180, "Y")
 
   function animate() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // overallTransform.rotate(5, 'Y')
+    mvTransform.rotate(1, 'Y')
 
     requestAnimationFrame(animate)
     drawCube()

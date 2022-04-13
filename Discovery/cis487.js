@@ -60,26 +60,26 @@ export class Transform {
   constructor(matrix) {
     if (matrix) {
       this.matrix = matrix.slice(0);  // make a copy
-      this.normalMatrix = matrix.slice(0)
+      // this.normalMatrix = matrix.slice(0)
     } 
 
     else {
       this.matrix = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
-      this.normalMatrix = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
+      // this.normalMatrix = [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1];
 
     }
     
     this.history = [];
-    this.normalHistory = [];
+    // this.normalHistory = [];
   }
   
   push() { 
     this.history.push(this.matrix);
-    this.normalHistory.push(this.normalHistory)
+    // this.normalHistory.push(this.normalHistory)
   }
   pop() {
     this.matrix = this.history.pop();
-    this.normalMatrix = this.normalHistory.pop();
+    // this.normalMatrix = this.normalHistory.pop();
   }
   
   static multiply(a, b) {
@@ -100,12 +100,16 @@ export class Transform {
   translate(tx, ty, tz) {
     this.matrix = Transform.multiply(this.matrix,
         [1,0,0,tx,  0,1,0,ty,  0,0,1,tz, 0,0,0,1]);
+    // this.normalMatrix = Transform.multiply(this.normalMatrix,
+        // [1,0,0,tx,  0,1,0,ty,  0,0,1,tz, 0,0,0,1]);
     return this;
   }
   
   scale(sx, sy, sz) {
     this.matrix = Transform.multiply(this.matrix,
         [sx,0,0,0,  0,sy,0,0,  0,0,sz,0,  0,0,0,1]);
+    // this.normalMatrix = Transform.multiply(this.normalMatrix,
+        // [sx,0,0,0,  0,sy,0,0,  0,0,sz,0,  0,0,0,1]);
     return this;
   }
  
@@ -124,10 +128,10 @@ export class Transform {
     
     if (pre) {
       this.matrix = Transform.multiply(m, this.matrix);
-      this.normalMatrix = Transform.multiply(m, this.normalMatrix);
+      // this.normalMatrix = Transform.multiply(m, this.normalMatrix);
     } else {
       this.matrix = Transform.multiply(this.matrix, m);
-      this.normalMatrix = Transform.multiply(this.normalMatrix, m);
+      // this.normalMatrix = Transform.multiply(this.normalMatrix, m);
 
     }
 
@@ -169,11 +173,11 @@ export class Transform {
   // credits David Moore.
   // ftp://ftp.freedesktop.org/pub/mesa/glu/glu-9.0.0.tar.gz
   // (glu-9.0.0/src/libutil/project.c)
-  static invert(transform) {
+  static invert(matrix) {
     let [m00, m01, m02, m03,
         m10, m11, m12, m13,
         m20, m21, m22, m23,
-        m30, m31, m32, m33] = transform.matrix;
+        m30, m31, m32, m33] = matrix;
     
     let i00 =  m11 * m22 * m33  -  m11 * m23 * m32 -
               m21 * m12 * m33  +  m21 * m13 * m32 +
@@ -248,21 +252,74 @@ export class Transform {
                 m10 * m01 * m22  +  m10 * m02 * m21 +
                 m20 * m01 * m12  -  m20 * m02 * m11) / det;
     
-    return new Transform([i00, i01, i02, i03,
-                          i10, i11, i12, i13,
-                          i20, i21, i22, i23,
-                          i30, i31, i32, i33]);
+    return [i00, i01, i02, i03,
+            i10, i11, i12, i13,
+            i20, i21, i22, i23,
+            i30, i31, i32, i33];
+  }
+
+  normalMatrix() {
+    let n = [], m = this.matrix;
+
+    // adj[0]
+    n[0] =  m[ 5]*m[10]*m[15] - m[ 5]*m[11]*m[14] -
+            m[ 9]*m[ 6]*m[15] + m[ 9]*m[ 7]*m[14] +
+            m[13]*m[ 6]*m[11] - m[13]*m[ 7]*m[10];
+
+    // adj[1]
+    n[3] = -m[ 1]*m[10]*m[15] + m[ 1]*m[11]*m[14] +
+            m[ 9]*m[ 2]*m[15] - m[ 9]*m[ 3]*m[14] -
+            m[13]*m[ 2]*m[11] + m[13]*m[ 3]*m[10];
+
+    // adj[2]
+    n[6] =  m[ 1]*m[ 6]*m[15] - m[ 1]*m[ 7]*m[14] -
+            m[ 5]*m[ 2]*m[15] + m[ 5]*m[ 3]*m[14] +
+            m[13]*m[ 2]*m[ 7] - m[13]*m[ 3]*m[ 6];
+
+    // adj[4]
+    n[1] = -m[ 4]*m[10]*m[15] + m[ 4]*m[11]*m[14] +
+            m[ 8]*m[ 6]*m[15] - m[ 8]*m[ 7]*m[14] -
+            m[12]*m[ 6]*m[11] + m[12]*m[ 7]*m[10];
+
+    // adj[5]
+    n[4] =  m[ 0]*m[10]*m[15] - m[ 0]*m[11]*m[14] -
+            m[ 8]*m[ 2]*m[15] + m[ 8]*m[ 3]*m[14] +
+            m[12]*m[ 2]*m[11] - m[12]*m[ 3]*m[10];
+
+    // adj[6]
+    n[7] = -m[ 0]*m[ 6]*m[15] + m[ 0]*m[ 7]*m[14] +
+            m[ 4]*m[ 2]*m[15] - m[ 4]*m[ 3]*m[14] -
+            m[12]*m[ 2]*m[ 7] + m[12]*m[ 3]*m[ 6];
+
+    // adj[8]
+    n[2] =  m[ 4]*m[ 9]*m[15] - m[ 4]*m[11]*m[13] -
+            m[ 8]*m[ 5]*m[15] + m[ 8]*m[ 7]*m[13] +
+            m[12]*m[ 5]*m[11] - m[12]*m[ 7]*m[ 9];
+
+    // adj[9]
+    n[5] = -m[ 0]*m[ 9]*m[15] + m[ 0]*m[11]*m[13] +
+            m[ 8]*m[ 1]*m[15] - m[ 8]*m[ 3]*m[13] -
+            m[12]*m[ 1]*m[11] + m[12]*m[ 3]*m[ 9];
+
+    // adj[10]
+    n[8] =  m[ 0]*m[ 5]*m[15] - m[ 0]*m[ 7]*m[13] -
+            m[ 4]*m[ 1]*m[15] + m[ 4]*m[ 3]*m[13] +
+            m[12]*m[ 1]*m[ 7] - m[12]*m[ 3]*m[ 5];
+
+    return n;
   }
 
   static transpose(matrix) {
     let [m00, m01, m02, m03,
-      m10, m11, m12, m13,
-      m20, m21, m22, m23,
-      m30, m31, m32, m33] = matrix;
+        m10, m11, m12, m13,
+        m20, m21, m22, m23,
+        m30, m31, m32, m33] = matrix;
 
-    return [m00, m10, m20, m30,
-            m01, m11, m21, m31,
-            m02, m12, m22, m32,
-            m03, m13, m23, m33]
+    return [
+      m00, m10, m20, m30,
+      m01, m11, m21, m31,
+      m02, m12, m22, m32,
+      m03, m13, m23, m33
+    ]
   }
 }
