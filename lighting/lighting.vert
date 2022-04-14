@@ -1,6 +1,6 @@
 precision mediump float;
 
-const vec3 lightDirection = normalize(vec3(0.0, 2.0, 2.0));
+const vec3 lightDirection = normalize(vec3(0.0, 1.0, 0.0));
 
 attribute vec3 position;
 attribute vec3 normalVector;
@@ -18,8 +18,9 @@ void main(void) {
 
     float dp = max(0.0, dot(normal, lightDirection));
 
-    vec3 diffuse = uColor * dp;
-    vColor = diffuse;
+    vec3 diffuse = uColor * dp * 0.6;
+    vec3 ambient = uColor * 0.4;
+    vColor = ambient + diffuse;
 
     gl_Position = pTransform * mvTransform  * vec4(position, 1.0);
 }
