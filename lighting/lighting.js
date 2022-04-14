@@ -21,8 +21,12 @@ function main() {
             // magic goes here
             mat4.translate(mvTransform, mvTransform, [0, 0, 0.5]);
 
+            mat4.invert(nTransform, mvTransform)
+            mat4.transpose(nTransform, nTransform)
+
             gl.uniform3f(uniforms.uColor, ...BLUE);
             gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
+            gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
             gl.drawArrays(gl.TRIANGLE_FAN, 0, 4)
 
             mvTransform = mvHistory.pop()
@@ -43,9 +47,6 @@ function main() {
         mat4.rotateX(mvTransform, mvTransform, Math.PI)
         drawSquare()
 
-
-
-
         mvTransform = mvHistory.pop()
 
     }
@@ -61,10 +62,12 @@ function main() {
     }
 
     const attributes = {
-        position: gl.getAttribLocation(shaderProgram, "position")
+        position: gl.getAttribLocation(shaderProgram, "position"),
+        normalVector: gl.getAttribLocation(shaderProgram, "normalVector"),
     }
 
     gl.enableVertexAttribArray(attributes.position)
+    gl.enableVertexAttribArray(attributes.normalVector)
 
     let vertexData = [
          0.5,  0.5, 0,
@@ -86,6 +89,10 @@ function main() {
     gl.vertexAttribPointer(attributes.position, 3, gl.FLOAT, false, 0, 0)
 
     // put a normal buffer here when we're ready for it
+    let normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalData), gl.STATIC_DRAW)
+    gl.vertexAttribPointer(attributes.normalVector, 3, gl.FLOAT, false, 0, 0)
 
     // transforms go here
     pTransform = mat4.create();
@@ -105,9 +112,9 @@ function main() {
 
         drawCube()
 
-        mat4.rotateY(mvTransform, mvTransform, Math.PI / 180)
+        mat4.rotateZ(mvTransform, mvTransform, Math.PI / 180)
 
-        // requestAnimationFrame(animate)
+        requestAnimationFrame(animate)
     }
 
     animate()
