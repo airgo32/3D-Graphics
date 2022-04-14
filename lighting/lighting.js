@@ -6,10 +6,13 @@ const {mat2, mat3, mat4, vec2, vec3, vec4} = glMatrix;
 setup("lighting.vert", "lighting.frag").then(main);
 
 function main() {
-    let mvTransform, pTransform, nTransform
+    let mvTransform, pTransform, nTransform, lightTransform
     let mvHistory = []
 
     const BLUE = [0.1, 0.4, 0.8];
+    const RED = [0.9, 0.1, 0.1];
+    const GREEN = [0.1, 0.8, 0.2];
+
 
 
 
@@ -24,9 +27,10 @@ function main() {
             mat4.invert(nTransform, mvTransform)
             mat4.transpose(nTransform, nTransform)
 
-            gl.uniform3f(uniforms.uColor, ...BLUE);
+            gl.uniform3f(uniforms.uColor, ...RED);
             gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
             gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
+            gl.uniformMatrix4fv(uniforms.lightTransform, false, lightTransform);
             gl.drawArrays(gl.TRIANGLE_FAN, 0, 4)
 
             mvTransform = mvHistory.pop()
@@ -59,6 +63,7 @@ function main() {
         mvTransform: gl.getUniformLocation(shaderProgram, "mvTransform"),
         nTransform: gl.getUniformLocation(shaderProgram, "nTransform"),
         uColor: gl.getUniformLocation(shaderProgram, "uColor"),
+        lightTransform: gl.getUniformLocation(shaderProgram, "lightTransform"),
     }
 
     const attributes = {
@@ -98,21 +103,23 @@ function main() {
     pTransform = mat4.create();
     mvTransform = mat4.create();
     nTransform = mat4.create();
+    lightTransform = mat4.create();
 
-    mat4.frustum(pTransform, -1, 1, -0.75, 0.75, 5, 35)
+    // mat4.frustum(pTransform, -1, 1, -0.75, 0.75, 5, 35)
     gl.uniformMatrix4fv(uniforms.pTransform, false, pTransform)
 
-    mat4.translate(mvTransform, mvTransform, [0, 0, -20])
-    mat4.scale(mvTransform, mvTransform, [3, 3, 3])
-    mat4.rotateX(mvTransform, mvTransform, Math.PI * 20 / 180)
+    // mat4.translate(mvTransform, mvTransform, [0, 0, -20])
+    // mat4.scale(mvTransform, mvTransform, [3, 3, 3])
+    mat4.rotateX(mvTransform, mvTransform, Math.PI * -20 / 180)
     mat4.rotateY(mvTransform, mvTransform, Math.PI * -30 / 180)
+
+    lightTransform = mat4.clone(mvTransform)
 
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+        mat4.rotateY(lightTransform, lightTransform, Math.PI / 180)
         drawCube()
-
-        mat4.rotateZ(mvTransform, mvTransform, Math.PI / 180)
 
         requestAnimationFrame(animate)
     }
