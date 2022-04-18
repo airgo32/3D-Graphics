@@ -15,10 +15,10 @@ varying vec3 vColor;
 
 void main(void) {
 
-    vec3 lightPos = vec3(-10.0, 0.0, 0.0);
+    vec3 lightPos = vec3(4.0, 0.0, 0.0);
 
     lightPos = (lightTransform *  vec4(lightPos, 1.0)).xyz;
-    // lightPos += vec3(0.0, 0.0, -20);
+    // lightPos += vec3(20.0, 0.0, 0.0);
 
 
 
@@ -33,6 +33,8 @@ void main(void) {
 
     vec3 diffuse = uColor * dp * 0.6;
     vec3 ambient = uColor * 0.4;
+
+    
     vColor = ambient + diffuse;
 
     gl_Position = pTransform * mvTransform  * vec4(position, 1.0);

@@ -12,6 +12,7 @@ function main() {
     const BLUE = [0.1, 0.4, 0.8];
     const RED = [0.9, 0.1, 0.1];
     const GREEN = [0.1, 0.8, 0.2];
+    const WHITE = [1.0, 1.0, 1.0];
 
 
 
@@ -63,7 +64,7 @@ function main() {
         mat4.invert(nTransform, mvTransform)
         mat4.transpose(nTransform, nTransform)
 
-        gl.uniform3f(uniforms.uColor, ...RED);
+        gl.uniform3f(uniforms.uColor, ...BLUE);
         gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
         gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
         gl.uniformMatrix4fv(uniforms.lightTransform, false, lightTransform);
@@ -338,7 +339,7 @@ function main() {
     gl.uniformMatrix4fv(uniforms.pTransform, false, pTransform)
 
     mat4.translate(mvTransform, mvTransform, [0, 0, -20])
-    // mat4.scale(mvTransform, mvTransform, [3, 3, 3])
+    mat4.scale(mvTransform, mvTransform, [0.5, 0.5, 0.5])
     mat4.rotateX(mvTransform, mvTransform, Math.PI * 20 / 180)
     mat4.rotateY(mvTransform, mvTransform, Math.PI * -30 / 180)
 
@@ -346,6 +347,7 @@ function main() {
 
     lightTransform = mat4.clone(mvTransform)
 
+    // mat4.rotateX(mvTransform, mvTransform, Math.PI * 30 / 180 )
 
 
     // let v1 = vec3.fromValues(0, 5, 0)
@@ -360,9 +362,19 @@ function main() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.rotateY(lightTransform, lightTransform, Math.PI / 30)
-        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 900)
+        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 900);
+        // mat4.rotateZ(mvTransform, mvTransform, Math.PI / 360)
+        // mat4.rotateX(mvTransform, mvTransform, Math.PI / 360)
+
         // drawCube()
+        mvHistory.push(mat4.clone(mvTransform))
         drawFromTris()
+        mat4.translate(mvTransform, mvTransform, [8, 0, 0])
+        drawFromTris()
+        mat4.translate(mvTransform, mvTransform, [-16, 0, 0])
+        drawFromTris()
+
+        mvTransform = mvHistory.pop()
 
         requestAnimationFrame(animate)
     }
