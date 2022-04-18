@@ -7,13 +7,22 @@ setup("lighting.vert", "lighting.frag").then(main);
 
 function main() {
     let mvTransform, pTransform, nTransform, lightTransform
+    const lightPositions = [
+        4.0, 0.0, 0.0,
+        0.0, 0.0, 4.0,
+    ]
+    const lightColors = [
+        1.0, 1.0, 1.0,
+        0.0, 1.0, 1.0,
+
+    ]
     let mvHistory = []
 
     const BLUE = [0.1, 0.4, 0.8];
     const RED = [0.9, 0.1, 0.1];
     const GREEN = [0.1, 0.8, 0.2];
     const WHITE = [1.0, 1.0, 1.0];
-
+    const BLACK = [0.0, 0.0, 0.0];
 
 
 
@@ -56,24 +65,29 @@ function main() {
 
     }
 
-    function drawFromTris() {
+    function drawFromTris(color) {
         mvHistory.push(mat4.clone(mvTransform));
         // magic goes here
-        mat4.translate(mvTransform, mvTransform, [0, 0, 0.5]);
 
         mat4.invert(nTransform, mvTransform)
         mat4.transpose(nTransform, nTransform)
 
-        gl.uniform3f(uniforms.uColor, ...BLUE);
+        gl.uniform3f(uniforms.uColor, ...color);
         gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
         gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
         gl.uniformMatrix4fv(uniforms.lightTransform, false, lightTransform);
+
+        // CHANGE TO 4V LATER
+        gl.uniform3fv(uniforms.lightPositions, lightPositions);
+        gl.uniform3fv(uniforms.lightColors, lightColors);
+
         gl.drawArrays(gl.TRIANGLES, 0, columnVertexData.length / 3)
 
         mvTransform = mvHistory.pop()
     }
 
-    gl.clearColor(1, 1, 1, 1);
+
+    gl.clearColor(0, 0, 0, 1);
     gl.enable(gl.DEPTH_TEST);
 
     const uniforms = {
@@ -82,6 +96,9 @@ function main() {
         nTransform: gl.getUniformLocation(shaderProgram, "nTransform"),
         uColor: gl.getUniformLocation(shaderProgram, "uColor"),
         lightTransform: gl.getUniformLocation(shaderProgram, "lightTransform"),
+
+        lightPositions: gl.getUniformLocation(shaderProgram, "lightPositions"),
+        lightColors: gl.getUniformLocation(shaderProgram, "lightColors"),
     }
 
     const attributes = {
@@ -357,25 +374,34 @@ function main() {
     // vec3.cross(v, v1, v2)
     // vec3.normalize(v, v)
     // console.log(v)
+    let frameCount = 0;
+    let turnRate = 1;
 
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        mat4.rotateY(lightTransform, lightTransform, Math.PI / 30)
-        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 900);
-        // mat4.rotateZ(mvTransform, mvTransform, Math.PI / 360)
-        // mat4.rotateX(mvTransform, mvTransform, Math.PI / 360)
+
+        if (frameCount == 0) {
+            mat4.rotateY(lightTransform, lightTransform, Math.PI * turnRate / 90)
+            // mat4.rotateY(mvTransform, mvTransform, Math.PI * turnRate / 900);
+
+        }
+        // mat4.rotateZ(mvTransform, mvTransform, Math.PI / 900)
+        // mat4.rotateX(mvTransform, mvTransform, Math.PI / 900)
 
         // drawCube()
         mvHistory.push(mat4.clone(mvTransform))
-        drawFromTris()
-        mat4.translate(mvTransform, mvTransform, [8, 0, 0])
-        drawFromTris()
-        mat4.translate(mvTransform, mvTransform, [-16, 0, 0])
-        drawFromTris()
+        drawFromTris(WHITE)
+        mat4.translate(mvTransform, mvTransform, [-8, 0, 0])
+        drawFromTris(RED)
+        mat4.translate(mvTransform, mvTransform, [8, 0, -8])
+        mat4.rotateY(mvTransform, mvTransform, Math.PI / 8)
+        drawFromTris(BLUE)
 
         mvTransform = mvHistory.pop()
 
+        frameCount++;
+        frameCount %= turnRate;
         requestAnimationFrame(animate)
     }
 
