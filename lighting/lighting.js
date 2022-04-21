@@ -4,54 +4,102 @@ import {gl, shaderProgram, setup } from "./setup.js";
 const {mat2, mat3, mat4, vec2, vec3, vec4} = glMatrix;
 
 setup("lighting.vert", "lighting.frag").then(main);
+let mvTransform, pTransform, nTransform, lightTransform
 
 function main() {
-    let mvTransform, pTransform, nTransform, lightTransform
     let lightPositions = [
         0.0, 0.0, 0.0,
         // 0.0, 4.0, 0.0,
     ]
     let lightColors = [
-        0.9, 0.2, 0.0,
+        0.7, 0.31, 0.0,
         // 1.0, 1.0, 1.0,
     ]
     let lightStrengths = [
-        25,
+        0,
     ]
 
     let mvHistory = []
 
+    class Drawable {
+        constructor(vertices, normals, color, b_colorAttribute) {
+            this.vertexBuffer = gl.createBuffer()
+            this.normalBuffer = gl.createBuffer()
+            if (b_colorAttribute) {
+                this.colorBuffer = gl.createBuffer()
+            }
+            this.vertices = vertices
+            this.normals = normals
+            this.b_colorAttribute = b_colorAttribute
+            this.color = color
+        }
+    
+        setup() {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW)
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.normals), gl.STATIC_DRAW)
+
+            if (this.b_colorAttribute) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.color), gl.STATIC_DRAW)
+            }
+        }
+
+        preDraw() {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer)
+            gl.vertexAttribPointer(attributes.position, 3, gl.FLOAT, false, 0, 0)
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer)
+            gl.vertexAttribPointer(attributes.normalVector, 3, gl.FLOAT, false, 0, 0)
+
+            if (this.b_colorAttribute) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
+                gl.vertexAttribPointer(attributes.color, 3, gl.FLOAT, false, 0, 0)
+            }
+        }
+
+        draw() {
+
+            mvHistory.push(mat4.clone(mvTransform));
+
+            // create the normal matrix
+            let invTrans = mat4.create()
+            mat4.invert(invTrans, mvTransform)
+            mat4.transpose(invTrans, invTrans)
+
+            gl.uniform1i(uniforms.b_colorAttribute, this.b_colorAttribute)
+            // set color
+            if (!this.b_colorAttribute) {
+                gl.uniform3f(uniforms.uColor, ...this.color);
+            }
+
+            // set transformation matrix uniforms
+            gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
+            gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
+            gl.uniformMatrix4fv(uniforms.lightTransform, false, lightTransform);
+
+            // lighting data
+            gl.uniform3fv(uniforms.lightPositions, lightPositions);
+            gl.uniform3fv(uniforms.lightColors, lightColors);
+            gl.uniform1fv(uniforms.lightStrengths, lightStrengths);
+
+            gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length / 3)
+
+            mvTransform = mvHistory.pop()
+        }
+    }
+
     // const BLUE = [0.1, 0.4, 0.8];
     const BLUE = [0.0, 0.0, 1.0];
-
     const RED = [0.9, 0.1, 0.1];
     const GREEN = [0.1, 0.8, 0.2];
     const WHITE = [1.0, 1.0, 1.0];
-    const BLACK = [0.0, 0.0, 0.0];
+    const BLACK = [0.05, 0.05, 0.05];
+    const BROWN = [0.259, 0.157, 0.055];
 
     const CLEAR_COLOR = BLACK;
-
-    function drawFromTris(color) {
-        mvHistory.push(mat4.clone(mvTransform));
-        // magic goes here
-
-        mat4.invert(nTransform, mvTransform)
-        mat4.transpose(nTransform, nTransform)
-
-        gl.uniform3f(uniforms.uColor, ...color);
-        gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
-        gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
-        gl.uniformMatrix4fv(uniforms.lightTransform, false, lightTransform);
-
-        // CHANGE TO 4V LATER
-        gl.uniform3fv(uniforms.lightPositions, lightPositions);
-        gl.uniform3fv(uniforms.lightColors, lightColors);
-        gl.uniform1fv(uniforms.lightStrengths, lightStrengths);
-
-        gl.drawArrays(gl.TRIANGLES, 0, columnVertexData.length / 3)
-
-        mvTransform = mvHistory.pop()
-    }
 
     function generateGrass(spawnX, spawnZ) {
         let x1, z1, x2, z2, x3, y3, z3, r, g, b
@@ -66,9 +114,11 @@ function main() {
         y3 = 0.6 + (Math.random() * 0.3)
         z3 = spawnZ + ((z1 - z2) / 2) * Math.random() * 0.5
 
-        r = (Math.random() * 0.2)
-        g = 0.2 + (Math.random() * 0.1)
-        b = 0.0 + (Math.random() * 0.1)
+        r = 0.1 + (Math.random() * 0.03)
+        g = 0.4 + (Math.random() * 0.2)
+        b = 0.1 + (Math.random() * 0.2)
+
+    
 
         let v1 = vec3.fromValues(x2 - x1, 0.0, z2 - z1)
         let v2 = vec3.fromValues(x3 - x2, y3, z3 - z2)
@@ -105,8 +155,10 @@ function main() {
         pTransform: gl.getUniformLocation(shaderProgram, "pTransform"),
         mvTransform: gl.getUniformLocation(shaderProgram, "mvTransform"),
         nTransform: gl.getUniformLocation(shaderProgram, "nTransform"),
-        uColor: gl.getUniformLocation(shaderProgram, "uColor"),
         lightTransform: gl.getUniformLocation(shaderProgram, "lightTransform"),
+
+        b_colorAttribute: gl.getUniformLocation(shaderProgram, "b_colorAttribute"),
+        uColor: gl.getUniformLocation(shaderProgram, "uColor"),
 
         lightPositions: gl.getUniformLocation(shaderProgram, "lightPositions"),
         lightColors: gl.getUniformLocation(shaderProgram, "lightColors"),
@@ -116,10 +168,12 @@ function main() {
     const attributes = {
         position: gl.getAttribLocation(shaderProgram, "position"),
         normalVector: gl.getAttribLocation(shaderProgram, "normalVector"),
+        color: gl.getAttribLocation(shaderProgram, "color"),
     }
 
     gl.enableVertexAttribArray(attributes.position)
     gl.enableVertexAttribArray(attributes.normalVector)
+    gl.enableVertexAttribArray(attributes.color)
 
     let vertexData = [
          0.5,  0.5, 0,
@@ -363,17 +417,6 @@ function main() {
         
     ]
 
-    let vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(columnVertexData), gl.STATIC_DRAW)
-    gl.vertexAttribPointer(attributes.position, 3, gl.FLOAT, false, 0, 0)
-
-    // put a normal buffer here when we're ready for it
-    let normalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(columnNormalData), gl.STATIC_DRAW)
-    gl.vertexAttribPointer(attributes.normalVector, 3, gl.FLOAT, false, 0, 0)
-
     // transforms go here
     pTransform = mat4.create();
     mvTransform = mat4.create();
@@ -397,34 +440,26 @@ function main() {
         grassVertexData.push(...blade.triangle)
         grassColors.push(...blade.color)
         grassNormalData.push(...blade.normals)
+
+        // TODO: this offset should be set somewhere outside of this loop
+        // (limits us to 25 grass squares)
         grassRotationOffsets.push(blade.rotationOffset)
+
     }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(grassVertexData), gl.STATIC_DRAW)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(grassNormalData), gl.STATIC_DRAW)
 
     let frameCount = 0;
     let turnRate = 1;
 
+    let grass = new Drawable(grassVertexData, grassNormalData, grassColors, true)
+    grass.setup()
+
+    let column = new Drawable(columnVertexData, columnNormalData, BROWN, false)
+    column.setup()
 
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-
-        if (frameCount % turnRate == 0) {
-            // mat4.rotateY(lightTransform, lightTransform, Math.PI * turnRate / 90)
-            // mat4.rotateY(mvTransform, mvTransform, Math.PI * turnRate / 900);
-            // mat4.translate(lightTransform, lightTransform, [0, Math.sin(Math.PI * frameCount / 180), 0])
-
-        }
-        // mat4.translate(lightTransform, lightTransform, [0, Math.sin(frameCount / 28) / 45, 0])
-        // mat4.translate(mvTransform, mvTransform, [0, Math.sin(frameCount / 28) / 28, 0])
-
-        // mat4.rotateZ(mvTransform, mvTransform, Math.PI / 900)
-        // mat4.rotateX(mvTransform, mvTransform, Math.PI / 900)
+        grass.preDraw()
 
         mvHistory.push(mat4.clone(mvTransform))
         let plotSize = 5;
@@ -439,7 +474,7 @@ function main() {
                     i == 4 & j == 4
                 )) {
                     mat4.rotateY(mvTransform, mvTransform,Math.PI / 2 * grassRotationOffsets[(i * 5) + j])
-                    drawFromTris(GREEN)
+                    grass.draw()
                     mat4.rotateY(mvTransform, mvTransform,Math.PI / -2 * grassRotationOffsets[(i * 5) + j])
                 }
                 
@@ -447,18 +482,21 @@ function main() {
             }
             mat4.translate(mvTransform, mvTransform, [-4 * plotSize, 0, 4])
         }
+        mat4.translate(mvTransform, mvTransform, [0, 0, -20])
+
+        mat4.translate(mvTransform, mvTransform, [4, 2.5, 4])
+
+        column.preDraw()
+        column.draw()
 
         let funcA = (Math.sin(frameCount * Math.PI / 180) + 1)
         let funcB = (Math.sin(2 * frameCount * Math.PI / 180) + 1)
         let funcC = (Math.sin(4 * frameCount * Math.PI / 180) + 1)
-        lightStrengths[0] = 10 + funcB + (Math.cos(frameCount * Math.PI / 18) * funcA * funcB * funcC)
-
+        lightStrengths[0] = 20 + funcB + (Math.cos(frameCount * Math.PI / 18) * funcA * funcB * funcC)
 
         mvTransform = mvHistory.pop()
 
-    
         frameCount++;
-        // frameCount %= turnRate;
         requestAnimationFrame(animate)
     }
 
