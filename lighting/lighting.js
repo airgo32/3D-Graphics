@@ -8,11 +8,11 @@ let mvTransform, pTransform, nTransform, lightTransform
 
 function main() {
     let lightPositions = [
-        0.0, 0.0, 0.0,
+        0.0, 0.5, 0.0,
         // 0.0, 4.0, 0.0,
     ]
     let lightColors = [
-        0.7, 0.31, 0.0,
+        0.9, 0.12, 0.0,
         // 1.0, 1.0, 1.0,
     ]
     let lightStrengths = [
@@ -22,7 +22,7 @@ function main() {
     let mvHistory = []
 
     class Drawable {
-        constructor(vertices, normals, color, b_colorAttribute) {
+        constructor(vertices, normals, color, b_colorAttribute = false, b_lightBothSides = false) {
             this.vertexBuffer = gl.createBuffer()
             this.normalBuffer = gl.createBuffer()
             if (b_colorAttribute) {
@@ -31,6 +31,7 @@ function main() {
             this.vertices = vertices
             this.normals = normals
             this.b_colorAttribute = b_colorAttribute
+            this.b_lightBothSides = b_lightBothSides
             this.color = color
         }
     
@@ -70,6 +71,7 @@ function main() {
             mat4.transpose(invTrans, invTrans)
 
             gl.uniform1i(uniforms.b_colorAttribute, this.b_colorAttribute)
+            gl.uniform1i(uniforms.b_lightBothSides, this.b_lightBothSides)
             // set color
             if (!this.b_colorAttribute) {
                 gl.uniform3f(uniforms.uColor, ...this.color);
@@ -91,8 +93,7 @@ function main() {
         }
     }
 
-    // const BLUE = [0.1, 0.4, 0.8];
-    const BLUE = [0.0, 0.0, 1.0];
+    const BLUE = [0.1, 0.4, 0.8];
     const RED = [0.9, 0.1, 0.1];
     const GREEN = [0.1, 0.8, 0.2];
     const WHITE = [1.0, 1.0, 1.0];
@@ -114,7 +115,7 @@ function main() {
         y3 = 0.6 + (Math.random() * 0.3)
         z3 = spawnZ + ((z1 - z2) / 2) * Math.random() * 0.5
 
-        r = 0.1 + (Math.random() * 0.03)
+        r = 0.2 + (Math.random() * 0.03)
         g = 0.4 + (Math.random() * 0.2)
         b = 0.1 + (Math.random() * 0.2)
 
@@ -158,6 +159,7 @@ function main() {
         lightTransform: gl.getUniformLocation(shaderProgram, "lightTransform"),
 
         b_colorAttribute: gl.getUniformLocation(shaderProgram, "b_colorAttribute"),
+        b_lightBothSides: gl.getUniformLocation(shaderProgram, "b_lightBothSides"),
         uColor: gl.getUniformLocation(shaderProgram, "uColor"),
 
         lightPositions: gl.getUniformLocation(shaderProgram, "lightPositions"),
@@ -175,19 +177,26 @@ function main() {
     gl.enableVertexAttribArray(attributes.normalVector)
     gl.enableVertexAttribArray(attributes.color)
 
-    let vertexData = [
-         0.5,  0.5, 0,
-         0.5, -0.5, 0,
-        -0.5, -0.5, 0,
-        -0.5,  0.5, 0,
+    let floorVertexData = [
+         10, 0,  10,
+        -10, 0, 10,
+        -10, 0, -10,
+        10, 0,  10,
+        -10, 0, -10,
+        10, 0,  -10,
+
+
     ]
 
-    let normalData = [
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
+    let floorNormalData = [
+        0, 1, 0,
+        0, 1, 0,
+        0, 1, 0,
+        0, 1, 0,
+        0, 1, 0,
+        0, 1, 0,
     ]
+
 
     let columnVertexData = [
         // first side
@@ -450,14 +459,24 @@ function main() {
     let frameCount = 0;
     let turnRate = 1;
 
-    let grass = new Drawable(grassVertexData, grassNormalData, grassColors, true)
+    let grass = new Drawable(grassVertexData, grassNormalData, grassColors, true, true)
     grass.setup()
 
-    let column = new Drawable(columnVertexData, columnNormalData, BROWN, false)
+    let column = new Drawable(columnVertexData, columnNormalData, BROWN)
     column.setup()
+
+    let floor = new Drawable(floorVertexData, floorNormalData, BLACK)
+    floor.setup()
 
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        mat4.rotateY(mvTransform, mvTransform, Math.PI / 900)
+        lightTransform = mat4.clone(mvTransform)
+
+
+        floor.preDraw()
+        floor.draw()
 
         grass.preDraw()
 
@@ -484,7 +503,9 @@ function main() {
         }
         mat4.translate(mvTransform, mvTransform, [0, 0, -20])
 
-        mat4.translate(mvTransform, mvTransform, [4, 2.5, 4])
+        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 4)
+        mat4.translate(mvTransform, mvTransform, [5, 2.5, 8])
+
 
         column.preDraw()
         column.draw()
