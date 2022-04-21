@@ -6,5 +6,9 @@
 }
 
 canvas {
-  border: 1px solid rgb(220, 220, 220);
+  border: 1px solid #3A3B3C;
+}
+
+body {
+  background-color:#242526;
 }
