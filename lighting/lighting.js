@@ -9,14 +9,16 @@ let mvTransform, pTransform, nTransform, lightTransform
 function main() {
     let lightPositions = [
         0.0, 0.5, 0.0,
-        // 0.0, 4.0, 0.0,
+        -2.0, 4.0, -2.0,
     ]
     let lightColors = [
-        0.9, 0.12, 0.0,
-        // 1.0, 1.0, 1.0,
+        0.7, 0.27, 0.0,
+        // 0.0, 0.9, 0.6,
+        // 0.0, 0.0, 0.2
     ]
     let lightStrengths = [
         0,
+        10
     ]
 
     let mvHistory = []
@@ -33,16 +35,14 @@ function main() {
             this.b_colorAttribute = b_colorAttribute
             this.b_lightBothSides = b_lightBothSides
             this.color = color
-        }
-    
-        setup() {
+
             gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer)
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW)
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this.normalBuffer)
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.normals), gl.STATIC_DRAW)
 
-            if (this.b_colorAttribute) {
+            if (b_colorAttribute) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer)
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.color), gl.STATIC_DRAW)
             }
@@ -79,7 +79,7 @@ function main() {
 
             // set transformation matrix uniforms
             gl.uniformMatrix4fv(uniforms.mvTransform, false, mvTransform);
-            gl.uniformMatrix4fv(uniforms.nTransform, false, nTransform);
+            gl.uniformMatrix4fv(uniforms.nTransform, false, invTrans);
             gl.uniformMatrix4fv(uniforms.lightTransform, false, lightTransform);
 
             // lighting data
@@ -99,6 +99,9 @@ function main() {
     const WHITE = [1.0, 1.0, 1.0];
     const BLACK = [0.05, 0.05, 0.05];
     const BROWN = [0.259, 0.157, 0.055];
+    const GRAY = [0.412, 0.412, 0.412];
+
+    const FLOOR = [0.2, 0.3, 0.1];
 
     const CLEAR_COLOR = BLACK;
 
@@ -118,8 +121,6 @@ function main() {
         r = 0.2 + (Math.random() * 0.03)
         g = 0.4 + (Math.random() * 0.2)
         b = 0.1 + (Math.random() * 0.2)
-
-    
 
         let v1 = vec3.fromValues(x2 - x1, 0.0, z2 - z1)
         let v2 = vec3.fromValues(x3 - x2, y3, z3 - z2)
@@ -143,10 +144,66 @@ function main() {
                 r, g, b,
                 r, g, b,
                 r, g, b,
-            ],
-            rotationOffset: Math.floor(Math.random() * 4)
-
+            ],        
         }
+    }
+
+    function generateSphere(precision, radius) {
+
+        let data = {
+            vertices: [],
+            normals: [],
+        }
+
+        let top = vec4.fromValues(0.0, radius, 0.0, 1.0)
+
+        let xRot = mat4.create()
+        mat4.rotateX(xRot, xRot, Math.PI / precision)
+        let yRot = mat4.create()
+        mat4.rotateY(yRot, yRot, Math.PI / precision)
+        
+        for (let i = 0; i < precision; i++) {
+
+            // create the box for this segment of the sphere
+            let v00 = vec3.create()
+            let v01 = vec3.create()
+            let v10 = vec3.create()
+            let v11 = vec3.create()
+            
+            v00 = vec3.clone(top)
+            vec3.transformMat4(v01, v00, xRot)
+            vec3.transformMat4(v10, v00, yRot)
+            vec3.transformMat4(v11, v01, yRot)
+
+
+            for (let j = 0; j < precision * 2; j++) {
+                // copy the vertices of the box into triangles
+
+                data.vertices.push(...v00, ...v01, ...v10, ...v01, ...v10, ...v11)
+
+                // calculate the normal vectors
+                let vx = vec3.create()
+                let vy = vec3.create()
+                let cross = vec3.create()
+
+                vec3.subtract(vx, v11, v01)
+                vec3.subtract(vy, v00, v01)
+                vec3.cross(cross, vx, vy)
+                vec3.normalize(cross, cross)
+                data.normals.push(...cross, ...cross, ...cross, ...cross, ...cross, ...cross)
+
+                // rotate the vectors
+                vec3.transformMat4(v00, v00, yRot)
+                vec3.transformMat4(v01, v01, yRot)
+                vec3.transformMat4(v10, v10, yRot)
+                vec3.transformMat4(v11, v11, yRot)
+            }
+
+            // rotate the vectors to return to start
+            vec3.transformMat4(top, top, xRot)
+        }
+
+        return data;
     }
 
     gl.clearColor(...CLEAR_COLOR, 1);
@@ -184,8 +241,6 @@ function main() {
         10, 0,  10,
         -10, 0, -10,
         10, 0,  -10,
-
-
     ]
 
     let floorNormalData = [
@@ -196,7 +251,6 @@ function main() {
         0, 1, 0,
         0, 1, 0,
     ]
-
 
     let columnVertexData = [
         // first side
@@ -443,6 +497,7 @@ function main() {
 
     lightTransform = mat4.clone(mvTransform)
 
+    // generate grass
     for (let i = 0; i < 25; i++) {
         let blade = generateGrass((4 * Math.random()) - 2, (4 * Math.random()) - 2)
 
@@ -450,29 +505,38 @@ function main() {
         grassColors.push(...blade.color)
         grassNormalData.push(...blade.normals)
 
-        // TODO: this offset should be set somewhere outside of this loop
-        // (limits us to 25 grass squares)
-        grassRotationOffsets.push(blade.rotationOffset)
+    }
+    // plotSize = n --> an n*n field of grasses
+    let plotSize = 5;
+
+    for (let i = 0; i < plotSize * plotSize; i++) {
+
+        grassRotationOffsets.push(Math.floor(Math.random() * 4))
 
     }
 
     let frameCount = 0;
     let turnRate = 1;
 
+    let sphereData = generateSphere(4, 2)
+    // console.log(sphereData)
+
     let grass = new Drawable(grassVertexData, grassNormalData, grassColors, true, true)
-    grass.setup()
 
     let column = new Drawable(columnVertexData, columnNormalData, BROWN)
-    column.setup()
 
-    let floor = new Drawable(floorVertexData, floorNormalData, BLACK)
-    floor.setup()
+    let floor = new Drawable(floorVertexData, floorNormalData, FLOOR)
+
+    let sphere = new Drawable(sphereData.vertices, sphereData.normals, GRAY)
+
+    mat4.rotateY(mvTransform, mvTransform, 20 * Math.PI / 180)
 
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.rotateY(mvTransform, mvTransform, Math.PI / 900)
-        lightTransform = mat4.clone(mvTransform)
+        // mat4.rotateY(lightTransform, lightTransform, Math.PI / 900)
+        // lightTransform = mat4.clone(mvTransform)
 
 
         floor.preDraw()
@@ -481,7 +545,6 @@ function main() {
         grass.preDraw()
 
         mvHistory.push(mat4.clone(mvTransform))
-        let plotSize = 5;
 
         mat4.translate(mvTransform, mvTransform, [-2 * (plotSize - 1), 0, -2 * (plotSize - 1)])
         for (let i = 0; i < plotSize; i++) {
@@ -501,19 +564,55 @@ function main() {
             }
             mat4.translate(mvTransform, mvTransform, [-4 * plotSize, 0, 4])
         }
-        mat4.translate(mvTransform, mvTransform, [0, 0, -20])
+        mat4.translate(mvTransform, mvTransform, [2 * ( plotSize - 1), 0, -2 * (plotSize + 1)])
 
-        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 4)
-        mat4.translate(mvTransform, mvTransform, [5, 2.5, 8])
+        mvTransform = mvHistory.pop()
 
-
+        mvHistory.push(mat4.clone(mvTransform))
         column.preDraw()
+
+        // mat4.translate(mvTransform, mvTransform, [-3, 2.5, -3])
+        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 8)
+        // column.draw()
+
+        mvTransform = mvHistory.pop()
+        mvHistory.push(mat4.clone(mvTransform))
+
+        mat4.translate(mvTransform, mvTransform, [4, 0.5, -3])
+        mat4.rotateX(mvTransform, mvTransform, Math.PI / 2)
+        mat4.rotateZ(mvTransform, mvTransform, -60 * Math.PI / 180)
+        column.draw()
+
+        mvTransform = mvHistory.pop()
+        mvHistory.push(mat4.clone(mvTransform))
+
+        mat4.translate(mvTransform, mvTransform, [-6, 0.25, 0])
+        mat4.rotateX(mvTransform, mvTransform, Math.PI / 2)
+        mat4.rotateZ(mvTransform, mvTransform, -10 * Math.PI / 180)
+        mat4.rotateY(mvTransform, mvTransform, Math.PI / 8)
+
         column.draw()
 
         let funcA = (Math.sin(frameCount * Math.PI / 180) + 1)
         let funcB = (Math.sin(2 * frameCount * Math.PI / 180) + 1)
         let funcC = (Math.sin(4 * frameCount * Math.PI / 180) + 1)
         lightStrengths[0] = 20 + funcB + (Math.cos(frameCount * Math.PI / 18) * funcA * funcB * funcC)
+
+        mvTransform = mvHistory.pop()
+        mvHistory.push(mat4.clone(mvTransform))
+
+        mat4.translate(mvTransform, mvTransform, [-4.0, -0.4, -6.0])
+
+        mat4.rotateX(mvTransform, mvTransform, -20 * Math.PI / 180)
+        mat4.rotateZ(mvTransform, mvTransform, -120 * Math.PI / 180)
+
+        // mat4.rotateY(mvTransform, mvTransform, frameCount * Math.PI / 180 / 2)
+        // mat4.rotateX(mvTransform, mvTransform, frameCount * Math.PI / 180 / 4)
+        // mat4.rotateZ(mvTransform, mvTransform, frameCount * Math.PI / 180 / -4)
+
+
+        sphere.preDraw()
+        sphere.draw()
 
         mvTransform = mvHistory.pop()
 

@@ -1,6 +1,6 @@
 precision mediump float;
 
-const float bands = 8.0;
+const float bands = 10.0;
 const int numLights = 2;
 
 const vec3 directionLightVec = normalize(vec3(5.0, 12.0, 5.0));
@@ -32,7 +32,7 @@ void main(void) {
 
         float dist = distance(vPosition, lightPos);
         dist = lightStrengths[i] / dist;
-        dist = max(lightStrengths[i] / 2.0, dist) - lightStrengths[i] / 2.0;
+        dist = max(lightStrengths[i] / 4.0, dist) - lightStrengths[i] / 4.0;
 
         vec3 lightDirection = lightPos - vPosition;
         float dp;
@@ -46,7 +46,7 @@ void main(void) {
 
         // vec3 finalColor = max(vec3(0.0, 0.0, 0.0), normalize(lightColors[i]) - (complement(vBaseColor)));
         vec3 finalColor = lightColors[i];
-        finalColor *= dist * dp;
+        finalColor *= dist * dp * 0.6;
 
         // runescape light banding effect
         // finalColor = floor(finalColor * bands) / bands;
@@ -58,8 +58,8 @@ void main(void) {
     bool directionOn = false;
     if (directionOn) {
         float dp = max(0.0, dot(directionLightVec, normalize(vNormal)));
-        vec3 finalColor = max(vec3(0.0, 0.0, 0.0), (directionLightCol) - (complement(vBaseColor)));
-        finalColor *= dp * 2.0;
+        vec3 finalColor = directionLightCol;
+        finalColor *= dp;
         brightness += finalColor;
 
     }
