@@ -8,7 +8,7 @@ let mvTransform, pTransform, nTransform, lightTransform
 
 function main() {
     let lightPositions = [
-        0.0, 0.5, 0.0,
+        0.0, 2.0, 0.0,
         -2.0, 4.0, -2.0,
     ]
     let lightColors = [
@@ -22,6 +22,14 @@ function main() {
     ]
 
     let mvHistory = []
+
+    const reset = () => {
+        mvTransform = mvHistory.pop()
+        mvHistory.push(mat4.clone(mvTransform))
+    }
+
+    let frameCount = 0;
+
 
     class Drawable {
         constructor(vertices, normals, color, b_colorAttribute = false, b_lightBothSides = false) {
@@ -86,6 +94,9 @@ function main() {
             gl.uniform3fv(uniforms.lightPositions, lightPositions);
             gl.uniform3fv(uniforms.lightColors, lightColors);
             gl.uniform1fv(uniforms.lightStrengths, lightStrengths);
+
+            //vertical offset data
+            gl.uniform1f(uniforms.yOffset, frameCount)
 
             gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length / 3)
 
@@ -222,6 +233,8 @@ function main() {
         lightPositions: gl.getUniformLocation(shaderProgram, "lightPositions"),
         lightColors: gl.getUniformLocation(shaderProgram, "lightColors"),
         lightStrengths: gl.getUniformLocation(shaderProgram, "lightStrengths"),
+
+        yOffset: gl.getUniformLocation(shaderProgram, "yOffset")
     }
 
     const attributes = {
@@ -236,11 +249,11 @@ function main() {
 
     let floorVertexData = [
          10, 0,  10,
-        -10, 0, 10,
+        -10, 0,  10,
         -10, 0, -10,
-        10, 0,  10,
+         10, 0,  10,
         -10, 0, -10,
-        10, 0,  -10,
+         10, 0, -10,
     ]
 
     let floorNormalData = [
@@ -515,7 +528,6 @@ function main() {
 
     }
 
-    let frameCount = 0;
     let turnRate = 1;
 
     let sphereData = generateSphere(4, 2)
@@ -534,31 +546,23 @@ function main() {
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        mat4.rotateY(mvTransform, mvTransform, Math.PI / 900)
+        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 1800)
         // mat4.rotateY(lightTransform, lightTransform, Math.PI / 900)
         // lightTransform = mat4.clone(mvTransform)
 
-
         floor.preDraw()
         floor.draw()
-
-        grass.preDraw()
 
         mvHistory.push(mat4.clone(mvTransform))
 
         mat4.translate(mvTransform, mvTransform, [-2 * (plotSize - 1), 0, -2 * (plotSize - 1)])
         for (let i = 0; i < plotSize; i++) {
             for (let j = 0; j < plotSize; j++) {
-                if (!(
-                    i == 0 & j == 0 ||
-                    i == 0 & j == 4 ||
-                    i == 4 & j == 0 ||
-                    i == 4 & j == 4
-                )) {
-                    mat4.rotateY(mvTransform, mvTransform,Math.PI / 2 * grassRotationOffsets[(i * 5) + j])
-                    grass.draw()
-                    mat4.rotateY(mvTransform, mvTransform,Math.PI / -2 * grassRotationOffsets[(i * 5) + j])
-                }
+
+                grass.preDraw()
+                mat4.rotateY(mvTransform, mvTransform,Math.PI / 2 * grassRotationOffsets[(i * 5) + j])
+                grass.draw()
+                mat4.rotateY(mvTransform, mvTransform,Math.PI / -2 * grassRotationOffsets[(i * 5) + j])
                 
                 mat4.translate(mvTransform, mvTransform, [4, 0, 0])
             }
@@ -570,10 +574,6 @@ function main() {
 
         mvHistory.push(mat4.clone(mvTransform))
         column.preDraw()
-
-        // mat4.translate(mvTransform, mvTransform, [-3, 2.5, -3])
-        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 8)
-        // column.draw()
 
         mvTransform = mvHistory.pop()
         mvHistory.push(mat4.clone(mvTransform))
@@ -592,6 +592,13 @@ function main() {
         mat4.rotateY(mvTransform, mvTransform, Math.PI / 8)
 
         column.draw()
+
+        mvTransform = mvHistory.pop()
+        mvHistory.push(mat4.clone(mvTransform))
+
+        mat4.translate(mvTransform, mvTransform, [5, 2.5, 5])
+        column.draw()
+
 
         let funcA = (Math.sin(frameCount * Math.PI / 180) + 1)
         let funcB = (Math.sin(2 * frameCount * Math.PI / 180) + 1)
