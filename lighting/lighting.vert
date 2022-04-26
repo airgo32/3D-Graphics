@@ -27,7 +27,14 @@ void main(void) {
 
     lightPos = (lightTransform * vec4(lightPos, 1.0)).xyz;
 
-    vec3 pos = (mvTransform * vec4(position, 1.0)).xyz;
+    vec3 pos = position;
+
+    if (options[2]) {
+        float dist = distance(pos, vec3(0, pos.y, 0));
+        pos.y *= (sin((pos.x * 39.0 + pos.y * 71.0 + yOffset) / max(4.0, 7.0 * dist)) / 5.0 + 1.0);
+    }
+
+    pos = (mvTransform * vec4(pos, 1.0)).xyz;
 
     if (options[3]) { // only used for grass model
 
@@ -35,6 +42,7 @@ void main(void) {
         pos.z += position.y * sin(pos.z + yOffset / 10.0) / 10.0;
 
     }
+
 
     vec3 normal = (nTransform * vec4(normalVector, 1.0)).xyz;
 

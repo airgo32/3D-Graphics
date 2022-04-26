@@ -1,11 +1,11 @@
 "use strict";
 
 import {gl, shaderProgram, setup, setDimensions } from "./setup.js";
-import { generateSphere, generateFloor, generateColumn, generateGrass } from "./drawables.js";
+import { generateSphere, generateFloor, generateColumn, generateGrass, generateFire } from "./drawables.js";
 
 const {mat2, mat3, mat4, vec2, vec3, vec4} = glMatrix;
 
-const WIDESCREEN = false;
+const WIDESCREEN = true;
 const ZOOM = 1;
 
 setDimensions(WIDESCREEN)
@@ -15,16 +15,16 @@ let mvTransform, pTransform, nTransform, lightTransform
 function main() {
     let lightPositions = [
         0.0, 2.0, 0.0,
-        -4.0, 4.0, -4.0,
+        // -5.0, 4.0, -5.0,
     ]
     let lightColors = [
         0.7, 0.27, 0.0,
-        0.0, 0.9, 0.6,
+        // 0.0, 0.9, 0.6,
         // 0.0, 0.0, 0.2
     ]
     let lightStrengths = [
         0,
-        10
+        // 10
     ]
     let mvHistory = []
     const reset = () => {
@@ -128,7 +128,7 @@ function main() {
 
     const CLEAR_COLOR = AMBIENT;
 
-    function drawCampfire(log, rock) {
+    function drawCampfire(log, rock, fire) {
         const logCount = 5;
         const rockCount = 12;
 
@@ -157,6 +157,8 @@ function main() {
             reset()
         }
 
+        fire.preDraw()
+        fire.draw()
         mvTransform = mvHistory.pop()
 
     }
@@ -213,6 +215,7 @@ function main() {
     let logData = generateColumn()
     let floorData = generateFloor(plotSize)
     let rockData = generateSphere(4, 2)
+    let fireData = generateFire(1.5);
     let testLightData = generateSphere(10, 0.25)
 
     let grass = new Drawable(grassData.vertices, grassData.normals, grassData.colors,
@@ -224,19 +227,18 @@ function main() {
     let log = new Drawable(logData.vertices, logData.normals, BROWN)
     let floor = new Drawable(floorData.vertices, floorData.normals, FLOOR)
     let rock = new Drawable(rockData.vertices, rockData.normals, GRAY)
+    let fire = new Drawable(fireData.vertices, fireData.normals, WHITE, {lightBothSides: true, animateHeight: true})
     let testLight = new Drawable(testLightData.vertices, testLightData.normals, WHITE,
         {
             lightBothSides: true
         })
+    let marshmallow = new Drawable(logData.vertices, logData.normals, WHITE)
     
-
-
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         // mat4.rotateY(mvTransform, mvTransform, Math.PI / 1800)
         // mat4.rotateY(lightTransform, lightTransform, Math.PI / 1800)
-
         mvHistory.push(mat4.clone(mvTransform))
 
         floor.preDraw()
@@ -247,9 +249,12 @@ function main() {
         for (let i = 0; i < plotSize; i++) {
             for (let j = 0; j < plotSize; j++) {
 
-                mat4.rotateY(mvTransform, mvTransform,Math.PI / 2 * grassData.rotationOffsets[(i * plotSize) + j])
-                grass.draw()
-                mat4.rotateY(mvTransform, mvTransform,Math.PI / -2 * grassData.rotationOffsets[(i * plotSize) + j])
+                if (!(i == (plotSize - 1)/2 && j == (plotSize - 1)/2)) {
+                    mat4.rotateY(mvTransform, mvTransform,Math.PI / 2 * grassData.rotationOffsets[(i * plotSize) + j])
+                    grass.draw()
+                    mat4.rotateY(mvTransform, mvTransform,Math.PI / -2 * grassData.rotationOffsets[(i * plotSize) + j])
+                }
+                
                 
                 mat4.translate(mvTransform, mvTransform, [4, 0, 0])
             }
@@ -259,7 +264,7 @@ function main() {
         reset()
 
         mat4.translate(mvTransform, mvTransform, [0, 0, 0])
-        drawCampfire(log, rock)
+        drawCampfire(log, rock, fire)
 
         reset()
 
@@ -293,16 +298,31 @@ function main() {
         reset()
 
         // // draw test lights
-        testLight.preDraw()
-        for (let i = 0; i < lightPositions.length; i = i + 3) {
-            mat4.translate(mvTransform, mvTransform,
-                [lightPositions[i], lightPositions[i+1], lightPositions[i+2]]
-                )
-            testLight.draw()
-            reset()
-        }
+        // testLight.preDraw()
+        // for (let i = 0; i < lightPositions.length; i = i + 3) {
+        //     mat4.translate(mvTransform, mvTransform,
+        //         [lightPositions[i], lightPositions[i+1], lightPositions[i+2]]
+        //         )
+        //     testLight.draw()
+        //     reset()
+        // }
+        mat4.translate(mvTransform, mvTransform, [-1, 1, -1])
+        mat4.rotateX(mvTransform, mvTransform, Math.PI / 3)
+        mat4.rotateZ(mvTransform, mvTransform, Math.PI / -4)
+
+        mat4.scale(mvTransform, mvTransform, [0.16, 0.075, 0.16])
+
+        marshmallow.preDraw()
+        marshmallow.draw()
+        mat4.scale(mvTransform, mvTransform, [0.4, 5, 0.4])
+        mat4.translate(mvTransform, mvTransform, [0, -2.5, 0])
+
+        log.preDraw()
+        log.draw()
 
         mvTransform = mvHistory.pop()
+
+
 
         frameCount++;
         requestAnimationFrame(animate)

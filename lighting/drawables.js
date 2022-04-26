@@ -367,7 +367,7 @@ export function generateGrass(plotSize) {
         }
     }
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 300; i++) {
         let blade = generateBlade((4 * Math.random()) - 2, (4 * Math.random()) - 2)
 
         data.vertices.push(...blade.triangle)
@@ -377,6 +377,75 @@ export function generateGrass(plotSize) {
 
     for (let i = 0; i < plotSize * plotSize; i++) {
         data.rotationOffsets.push(Math.floor(Math.random() * 4))
+    }
+
+    return data;
+}
+
+export function generateFire(radius) {
+
+    let data = {
+        vertices: [],
+        normals: [],
+        colors: [],
+    }
+
+    function generateFlame(radius, dist, theta) {
+        let x1, x2, x3, z1, z2, z3, y3, r, g, b        
+
+
+        x1 = radius * dist * Math.cos(rad(theta + 15))
+        z1 = radius * dist * Math.sin(rad(theta + 15))
+
+        x2 = radius * dist * Math.cos(rad(theta - 15))
+        z2 = radius * dist * Math.sin(rad(theta - 15))
+    
+
+        x3 = ((x1 + x2) / 2) * dist
+        y3 = 3 - 2 * dist
+        z3 = ((z1 + z2) / 2) * dist
+
+        // r = 0.2 + (Math.random() * 0.03)
+        // g = 0.4 + (Math.random() * 0.2)
+        // b = 0.1 + (Math.random() * 0.2)
+        r = 1.0 - (Math.random() * 0.2)
+        
+
+        let v1 = vec3.fromValues(x2 - x1, 0.0, z2 - z1)
+        let v2 = vec3.fromValues(x3 - x2, y3, z3 - z2)
+
+        let cross = vec3.create()
+        vec3.cross(cross, v1, v2)
+        vec3.normalize(cross, cross)
+
+        return {
+            triangle: [
+                x1, 0.0, z1,
+                x2, 0.0, z2,
+                x3, y3,  z3,
+            ],
+            normals: [
+                cross[0], cross[1], cross[2],
+                cross[0], cross[1], cross[2],
+                cross[0], cross[1], cross[2],
+            ],
+            // color: [
+            //     r, r, r,
+            //     r, r, r,
+            //     r, r, r,
+            // ],        
+        }
+    }
+
+
+    for (let i = 0; i < 50; i++) {
+        let theta = Math.floor(Math.random() * 360)
+        let dist = Math.random()
+
+        let flame = generateFlame(radius, dist, theta)
+
+        data.vertices.push(...flame.triangle)
+        data.normals.push(...flame.normals)
     }
 
     return data;
