@@ -212,7 +212,7 @@ function main() {
     lightTransform = mat4.clone(mvTransform)
 
     let grassData = generateGrass(plotSize)
-    let logData = generateColumn()
+    let logData = generateColumn(10, 1, 5, true)
     let floorData = generateFloor(plotSize)
     let rockData = generateSphere(4, 2)
     let fireData = generateFire(1.5);
