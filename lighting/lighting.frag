@@ -7,8 +7,9 @@ const vec3 directionLightVec = normalize(vec3(5.0, 12.0, 5.0));
 // (1.0, 0.4, 0.1)
 // (0.1, 0.1, 0.4)
 const vec3 directionLightCol = (vec3(1.0, 1.0, 1.0));
+const vec3 ambientCol = vec3(0.0, 0.2, 0.5);
 
-uniform bool b_lightBothSides;
+uniform bool options[4];
 uniform float lightStrengths[numLights];
 uniform vec3 lightPositions[numLights];
 uniform vec3 lightColors[numLights];
@@ -36,7 +37,7 @@ void main(void) {
         vec3 lightDirection = lightPos - vPosition;
         float dp;
 
-        if (b_lightBothSides) {
+        if (options[1]) {
             dp = abs(dot(normalize(lightDirection), normalize(vNormal)));
         } else {
             dp = max(0.0, dot(normalize(lightDirection), normalize(vNormal)));
@@ -64,7 +65,7 @@ void main(void) {
     }
 
     brightness = vBaseColor * brightness;
-    vec3 ambient = vBaseColor * 0.1;
+    vec3 ambient = vBaseColor * ambientCol * 0.3;
 
     vec3 color = brightness + ambient;
 

@@ -12,7 +12,7 @@ uniform mat4 nTransform;
 uniform mat4 lightTransform;
 uniform vec3 uColor;
 
-uniform bool b_colorAttribute;
+uniform bool options[4];
 
 uniform float yOffset;
 
@@ -29,7 +29,7 @@ void main(void) {
 
     vec3 pos = (mvTransform * vec4(position, 1.0)).xyz;
 
-    if (b_colorAttribute) { // only used for grass model
+    if (options[3]) { // only used for grass model
 
         pos.x += position.y * sin(pos.x + yOffset / 40.0) / 10.0;
         pos.z += position.y * sin(pos.z + yOffset / 10.0) / 10.0;
@@ -41,7 +41,7 @@ void main(void) {
     vPosition = (1.0 * vec4(pos, 1.0)).xyz;
     vNormal = normal;
 
-    if (b_colorAttribute) {
+    if (options[0]) {
         vBaseColor = color;
     } else {
         vBaseColor = uColor;

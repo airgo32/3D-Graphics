@@ -54,3 +54,29 @@ export function setup(vertexShaderFileName, fragmentShaderFileName) {
 
   return sp;
 }
+
+export function setDimensions(widescreen) {
+  let content = document.querySelector("#content")
+  let canvas = document.querySelector("#canvas")
+
+  let winHeight = window.innerHeight
+  let winWidth = window.innerWidth
+
+  let ratio = winHeight / winWidth
+  let width = 0.95, height = 0.95
+
+  if (ratio < (widescreen ? 0.5625 : 0.75)) { // screen is longer than it is wider
+    height *= winHeight
+    width *= winHeight / (widescreen ? 0.5625 : 0.75)
+
+  } else { // screen is taller than it is wider
+    width *= winWidth
+    height *= winWidth * (widescreen ? 0.5625 : 0.75)
+  }
+
+  content.style.width = `${width}px`
+  canvas.width = width;
+  canvas.height = height;
+
+  return ratio;
+}
