@@ -5,7 +5,7 @@ import { generateSphere, generateFloor, generateColumn, generateGrass, generateF
 
 const {mat2, mat3, mat4, vec2, vec3, vec4} = glMatrix;
 
-const WIDESCREEN = true;
+const WIDESCREEN = false;
 const ZOOM = 1;
 
 setDimensions(WIDESCREEN)
@@ -124,6 +124,7 @@ function main() {
     const BROWN = [0.259, 0.157, 0.055];
     const GRAY = [0.412, 0.412, 0.412];
     const AMBIENT = [0.0, 0.018, 0.015];
+    const ORANGE = [1.0, 0.447, 0.0];
     const FLOOR = [0.2, 0.3, 0.1];
 
     const CLEAR_COLOR = AMBIENT;
@@ -227,7 +228,7 @@ function main() {
     let log = new Drawable(logData.vertices, logData.normals, BROWN)
     let floor = new Drawable(floorData.vertices, floorData.normals, FLOOR)
     let rock = new Drawable(rockData.vertices, rockData.normals, GRAY)
-    let fire = new Drawable(fireData.vertices, fireData.normals, WHITE, {lightBothSides: true, animateHeight: true})
+    let fire = new Drawable(fireData.vertices, fireData.normals, ORANGE, {lightBothSides: true, animateHeight: true})
     let testLight = new Drawable(testLightData.vertices, testLightData.normals, WHITE,
         {
             lightBothSides: true
@@ -237,7 +238,7 @@ function main() {
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 1800)
+        // mat4.rotateY(mvTransform, mvTransform, Math.PI / 9000)
         // mat4.rotateY(lightTransform, lightTransform, Math.PI / 1800)
         mvHistory.push(mat4.clone(mvTransform))
 

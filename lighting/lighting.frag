@@ -1,6 +1,6 @@
 precision mediump float;
 
-const float bands = 10.0;
+const float bands = 4.0;
 const int numLights = 2;
 
 const vec3 directionLightVec = normalize(vec3(5.0, 12.0, 5.0));
