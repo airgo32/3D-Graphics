@@ -5,8 +5,10 @@ import { generateSphere, generateFloor, generateColumn, generateGrass, generateF
 
 const {mat2, mat3, mat4, vec2, vec3, vec4} = glMatrix;
 
-const WIDESCREEN = false;
+const WIDESCREEN = true;
 const ZOOM = 1;
+
+const NIGHT = 0, MORNING = 1, DAY = 2, EVENING = 3
 
 setDimensions(WIDESCREEN)
 setup("lighting.vert", "lighting.frag").then(main);
@@ -35,6 +37,8 @@ function main() {
     let frameCount = 0;
     // plotSize = n --> an n*n field of grasses
     let plotSize = 9;
+    let startTime, lerp
+
 
     class Drawable {
         constructor(vertices, normals, color, options = {}) {
@@ -107,6 +111,10 @@ function main() {
             gl.uniform3fv(uniforms.lightColors, lightColors);
             gl.uniform1fv(uniforms.lightStrengths, lightStrengths);
 
+            // time of day data
+            gl.uniform1i(uniforms.startTime, startTime);
+            gl.uniform1f(uniforms.lerp, lerp);
+
             //vertical offset data
             gl.uniform1f(uniforms.yOffset, frameCount)
 
@@ -127,7 +135,13 @@ function main() {
     const ORANGE = [1.0, 0.447, 0.0];
     const FLOOR = [0.2, 0.3, 0.1];
 
-    const CLEAR_COLOR = AMBIENT;
+    const NIGHT_SKY = vec3.fromValues(0.0, 0.05, 0.15)
+    const MORNING_SKY = vec3.fromValues(0.61, 0.34, 0.2)
+    const DAY_SKY = vec3.fromValues(0.36, 0.8, 1.0)
+    const EVENING_SKY = vec3.fromValues(0.7, 0.38, 0.16)
+
+    let clearColor = vec3.create();
+    vec3.copy(clearColor, NIGHT_SKY)
 
     function drawCampfire(log, rock, fire) {
         const logCount = 5;
@@ -164,7 +178,7 @@ function main() {
 
     }
 
-    gl.clearColor(...CLEAR_COLOR, 1);
+    // gl.clearColor(...CLEAR_COLOR, 1);
     gl.enable(gl.DEPTH_TEST);
 
     const uniforms = {
@@ -179,6 +193,9 @@ function main() {
         lightPositions: gl.getUniformLocation(shaderProgram, "lightPositions"),
         lightColors: gl.getUniformLocation(shaderProgram, "lightColors"),
         lightStrengths: gl.getUniformLocation(shaderProgram, "lightStrengths"),
+
+        startTime: gl.getUniformLocation(shaderProgram, "startTime"),
+        lerp: gl.getUniformLocation(shaderProgram, "lerp"),
 
         yOffset: gl.getUniformLocation(shaderProgram, "yOffset")
     }
@@ -237,6 +254,50 @@ function main() {
     
     function animate() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.clearColor(...clearColor, 1);
+
+
+        // calculate the time of day
+        let hourLength = 100; // frames per hour
+        let timeDay = frameCount % (24 * hourLength);
+        let hour = timeDay / hourLength;
+
+        if (hour < 4) {
+            startTime = NIGHT
+            lerp = 0
+            // vec3.copy(clearColor, )
+        } else if (hour >= 4 && hour < 7) {
+            startTime = NIGHT
+            lerp = (hour - 4) / 3
+            vec3.lerp(clearColor, NIGHT_SKY, MORNING_SKY, lerp)
+
+        } else if (hour >= 7 && hour < 9) {
+            startTime = MORNING
+            lerp = (hour - 7) / 2
+            vec3.lerp(clearColor, MORNING_SKY, DAY_SKY, lerp)
+
+
+        }   else if (hour >= 9 && hour < 16) {
+            startTime = DAY
+            lerp = 0
+            
+        } else if (hour >= 16 && hour < 19) {
+            startTime = DAY
+            // lerp = 1 - (Math.sqrt(3 - (hour-16)) / Math.sqrt(3))
+            lerp = 1 - ((19 - hour) / 3)
+            vec3.lerp(clearColor, DAY_SKY, EVENING_SKY, lerp)
+
+            
+        } else if (hour >= 19 && hour < 21) {
+            startTime = EVENING
+            lerp = 1 - ((21 - hour) / 2)
+            vec3.lerp(clearColor, EVENING_SKY, NIGHT_SKY, lerp)
+
+            
+        } else {
+            startTime = NIGHT
+            lerp = 0
+        }
 
         // mat4.rotateY(mvTransform, mvTransform, Math.PI / 9000)
         // mat4.rotateY(lightTransform, lightTransform, Math.PI / 1800)
@@ -285,17 +346,22 @@ function main() {
 
         reset()
 
-        let funcA = (Math.sin(frameCount * Math.PI / 180) + 1)
-        let funcB = (Math.sin(2 * frameCount * Math.PI / 180) + 1)
-        let funcC = (Math.sin(4 * frameCount * Math.PI / 180) + 1)
-        lightStrengths[0] = 20 + funcB + (Math.cos(frameCount * Math.PI / 18) * funcA * funcB * funcC)
+        rock.preDraw()
+        
 
         mat4.translate(mvTransform, mvTransform, [-4.0, -0.4, -6.0])
         mat4.rotateX(mvTransform, mvTransform, -20 * Math.PI / 180)
         mat4.rotateZ(mvTransform, mvTransform, -120 * Math.PI / 180)
-
-        rock.preDraw()
         rock.draw()
+
+        reset()
+
+        mat4.translate(mvTransform, mvTransform, [7.0, -0.4, -12.0])
+        mat4.rotateX(mvTransform, mvTransform, 120 * Math.PI / 180)
+        mat4.rotateZ(mvTransform, mvTransform, 70 * Math.PI / 180)
+        mat4.scale(mvTransform, mvTransform, [0.8, 0.8, 0.8])
+        rock.draw()
+
         reset()
 
         // // draw test lights
@@ -310,7 +376,6 @@ function main() {
         mat4.translate(mvTransform, mvTransform, [-1, 1, -1])
         mat4.rotateX(mvTransform, mvTransform, Math.PI / 3)
         mat4.rotateZ(mvTransform, mvTransform, Math.PI / -4)
-
         mat4.scale(mvTransform, mvTransform, [0.16, 0.075, 0.16])
 
         marshmallow.preDraw()
@@ -324,7 +389,10 @@ function main() {
         mvTransform = mvHistory.pop()
 
 
-
+        let funcA = (Math.sin(frameCount * Math.PI / 180) + 1)
+        let funcB = (Math.sin(2 * frameCount * Math.PI / 180) + 1)
+        let funcC = (Math.sin(4 * frameCount * Math.PI / 180) + 1)
+        lightStrengths[0] = 20 + funcB + (Math.cos(frameCount * Math.PI / 18) * funcA * funcB * funcC)
         frameCount++;
         requestAnimationFrame(animate)
     }
