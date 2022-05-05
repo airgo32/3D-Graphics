@@ -14,6 +14,7 @@ uniform bool options[4];
 uniform float lightStrengths[numLights];
 uniform vec3 lightPositions[numLights];
 uniform vec3 lightColors[numLights];
+uniform bool drawFire;
 uniform mat4 lightTransform;
 
 uniform int startTime;
@@ -77,33 +78,34 @@ void main(void) {
 
 
     vec3 brightness;
+    if (drawFire) {
+        for (int i = 0; i < numLights; i++) {
 
-    for (int i = 0; i < numLights; i++) {
+            vec3 lightPos = (lightTransform * vec4(lightPositions[i], 1.0)).xyz;
 
-        vec3 lightPos = (lightTransform * vec4(lightPositions[i], 1.0)).xyz;
+            float dist = distance(vPosition, lightPos);
+            dist = lightStrengths[i] / dist;
+            dist = max(lightStrengths[i] / 4.0, dist) - lightStrengths[i] / 4.0;
 
-        float dist = distance(vPosition, lightPos);
-        dist = lightStrengths[i] / dist;
-        dist = max(lightStrengths[i] / 4.0, dist) - lightStrengths[i] / 4.0;
+            vec3 lightDirection = lightPos - vPosition;
+            float dp;
 
-        vec3 lightDirection = lightPos - vPosition;
-        float dp;
-
-        if (options[1]) {
-            dp = abs(dot(normalize(lightDirection), normalize(vNormal)));
-        } else {
-            dp = max(0.0, dot(normalize(lightDirection), normalize(vNormal)));
-        }
+            if (options[1]) {
+                dp = abs(dot(normalize(lightDirection), normalize(vNormal)));
+            } else {
+                dp = max(0.0, dot(normalize(lightDirection), normalize(vNormal)));
+            }
 
 
-        // vec3 finalColor = max(vec3(0.0, 0.0, 0.0), normalize(lightColors[i]) - (complement(vBaseColor)));
-        vec3 finalColor = lightColors[i];
-        finalColor *= dist * dp * 0.6;
+            // vec3 finalColor = max(vec3(0.0, 0.0, 0.0), normalize(lightColors[i]) - (complement(vBaseColor)));
+            vec3 finalColor = lightColors[i];
+            finalColor *= dist * dp * 0.6;
 
-        // runescape light banding effect
-        // finalColor = floor(finalColor * bands) / bands;
+            // runescape light banding effect
+            // finalColor = floor(finalColor * bands) / bands;
 
-        brightness += finalColor;
+            brightness += finalColor;
+        }   
     }
 
     // directional light

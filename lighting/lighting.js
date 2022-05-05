@@ -39,6 +39,9 @@ function main() {
     let plotSize = 9;
     let startTime, lerp
 
+    let drawGrass = true;
+    let drawFire = true;
+    let fireColor = 1; // 1 is default
 
     class Drawable {
         constructor(vertices, normals, color, options = {}) {
@@ -86,6 +89,10 @@ function main() {
             }
         }
 
+        changeColor(newColor) {
+            this.color = newColor;
+        }
+
         draw() {
 
             mvHistory.push(mat4.clone(mvTransform));
@@ -110,6 +117,8 @@ function main() {
             gl.uniform3fv(uniforms.lightPositions, lightPositions);
             gl.uniform3fv(uniforms.lightColors, lightColors);
             gl.uniform1fv(uniforms.lightStrengths, lightStrengths);
+            gl.uniform1i(uniforms.drawFire, drawFire);
+
 
             // time of day data
             gl.uniform1i(uniforms.startTime, startTime);
@@ -143,7 +152,7 @@ function main() {
     let clearColor = vec3.create();
     vec3.copy(clearColor, NIGHT_SKY)
 
-    function drawCampfire(log, rock, fire) {
+    function drawCampfire() {
         const logCount = 5;
         const rockCount = 12;
 
@@ -171,14 +180,16 @@ function main() {
             rock.draw()
             reset()
         }
+        if (drawFire) {
+            fire.preDraw()
+            fire.draw()
+        }
 
-        fire.preDraw()
-        fire.draw()
+    
         mvTransform = mvHistory.pop()
 
     }
 
-    // gl.clearColor(...CLEAR_COLOR, 1);
     gl.enable(gl.DEPTH_TEST);
 
     const uniforms = {
@@ -193,6 +204,7 @@ function main() {
         lightPositions: gl.getUniformLocation(shaderProgram, "lightPositions"),
         lightColors: gl.getUniformLocation(shaderProgram, "lightColors"),
         lightStrengths: gl.getUniformLocation(shaderProgram, "lightStrengths"),
+        drawFire: gl.getUniformLocation(shaderProgram, "drawFire"),
 
         startTime: gl.getUniformLocation(shaderProgram, "startTime"),
         lerp: gl.getUniformLocation(shaderProgram, "lerp"),
@@ -205,6 +217,49 @@ function main() {
         normalVector: gl.getAttribLocation(shaderProgram, "normalVector"),
         color: gl.getAttribLocation(shaderProgram, "color"),
     }
+
+    function keyDownHandler(event) {
+
+        switch (event.code) {
+            case "Digit1":
+            case "Numpad1":
+                fireColor = 1;
+                lightColors.splice(0, 3, ...[0.7, 0.27, 0.0])
+                fire.changeColor(ORANGE)
+
+            break;
+
+            case "Digit2":
+            case "Numpad2":
+                fireColor = 2;
+                lightColors.splice(0, 3, ...[0.0, 0.6, 0.4])
+                fire.changeColor([0.0, 0.7, 0.4])
+
+            break;
+            case "Digit3":
+            case "Numpad3":
+                fireColor = 3;
+                lightColors.splice(0, 3, ...[0.9, 0.1, 0.5])
+                fire.changeColor([0.6, 0.0, 0.3])
+
+            break;
+            case "Digit4":
+            case "Numpad4":
+                fireColor = 4;
+                lightColors.splice(0, 3, ...[0.1, 0.1, 0.5])
+                fire.changeColor([0.05, 0.1, 0.3])
+
+            break;
+            case "KeyF":
+                drawFire = !drawFire
+            break;
+            case "KeyG":
+                drawGrass = !drawGrass
+            break;
+        }
+    }
+
+    window.addEventListener("keydown", keyDownHandler)
 
     gl.enableVertexAttribArray(attributes.position)
     gl.enableVertexAttribArray(attributes.normalVector)
@@ -246,6 +301,7 @@ function main() {
     let floor = new Drawable(floorData.vertices, floorData.normals, FLOOR)
     let rock = new Drawable(rockData.vertices, rockData.normals, GRAY)
     let fire = new Drawable(fireData.vertices, fireData.normals, ORANGE, {lightBothSides: true, animateHeight: true})
+    let whiteFire = new Drawable(fireData.vertices, fireData.normals, WHITE, {lightBothSides: true, animateHeight: true})
     let testLight = new Drawable(testLightData.vertices, testLightData.normals, WHITE,
         {
             lightBothSides: true
